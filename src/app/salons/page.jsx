@@ -15,6 +15,7 @@ import {
 	SheetTrigger,
 } from '@/components/ui/sheet'
 import { Slider } from '@/components/ui/slider'
+import { motion } from 'framer-motion'
 import { MapPin, Search, SlidersHorizontal, Star } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -98,9 +99,15 @@ export default function SalonsPage() {
 			<main className='flex-grow pt-28 pb-20'>
 				<div className='max-w-7xl mx-auto px-6 lg:px-8'>
 					{/* Header & Search */}
-					<div className='mb-10'>
-						<h1 className='text-3xl md:text-4xl font-semibold text-zinc-900 mb-6 font-serif'>
-							Sizga eng yaqin salonlar
+					<motion.div
+						initial={{ opacity: 0, y: -20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.6 }}
+						className='mb-10'
+					>
+						<h1 className='text-3xl md:text-5xl font-bold text-zinc-900 mb-6 tracking-tight'>
+							O'zingizga ma'qul joyni{' '}
+							<span className='italic font-serif text-zinc-500'>tanlang</span>
 						</h1>
 
 						<div className='flex flex-col md:flex-row gap-4'>
@@ -292,7 +299,7 @@ export default function SalonsPage() {
 								</Badge>
 							))}
 						</div>
-					</div>
+					</motion.div>
 
 					{/* Salons Grid */}
 					<div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8'>
@@ -301,99 +308,104 @@ export default function SalonsPage() {
 								Kechirasiz, bunday salon topilmadi.
 							</div>
 						) : (
-							filteredSalons.slice(0, visibleCount).map(salon => (
-								<Card
+							filteredSalons.slice(0, visibleCount).map((salon, index) => (
+								<motion.div
 									key={salon.id}
-									className='overflow-hidden group border-zinc-100/80 shadow-sm hover:shadow-xl transition-all duration-300 rounded-[1.5rem] bg-white flex flex-col'
+									initial={{ opacity: 0, y: 30 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ duration: 0.5, delay: index * 0.1 }}
+									whileHover={{ y: -5 }}
 								>
-									{/* Image Area */}
-									<div className='relative aspect-[4/3] overflow-hidden bg-zinc-100'>
-										<Image
-											src={salon.image}
-											alt={salon.name}
-											fill
-											className='object-cover group-hover:scale-105 transition-transform duration-500'
-										/>
-										{/* Overlays */}
-										<div className='absolute top-4 left-4'>
-											<Badge className='bg-white/90 text-zinc-900 hover:bg-white backdrop-blur-sm border-none shadow-sm font-semibold flex items-center gap-1'>
-												<Star className='w-3.5 h-3.5 text-yellow-500 fill-yellow-500' />
-												{salon.rating}{' '}
-												<span className='text-zinc-500 font-normal'>
-													({salon.reviews})
-												</span>
-											</Badge>
-										</div>
-										<div className='absolute bottom-4 right-4'>
-											<Badge
-												variant='secondary'
-												className='bg-zinc-900/80 text-white hover:bg-zinc-900 backdrop-blur-md border-none font-medium text-xs px-2.5 py-1 flex items-center gap-1.5 rounded-lg shadow-md'
-											>
-												<MapPin className='w-3 h-3 text-white/80' />{' '}
-												{salon.distance}
-											</Badge>
-										</div>
-									</div>
-
-									{/* Content Area */}
-									<CardContent className='p-6 flex-grow flex flex-col'>
-										<div className='flex justify-between items-start mb-2'>
-											<div>
-												<p className='text-xs font-semibold tracking-wider text-zinc-400 uppercase mb-1'>
-													{salon.type}
-												</p>
-												<h3 className='text-xl font-bold text-zinc-900 group-hover:text-zinc-700 transition-colors line-clamp-1'>
-													{salon.name}
-												</h3>
+									<Card className='overflow-hidden group border-zinc-100/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.1)] transition-all duration-300 rounded-[1.5rem] bg-white flex flex-col h-full'>
+										{/* Image Area */}
+										<div className='relative aspect-[4/3] overflow-hidden bg-zinc-100'>
+											<Image
+												src={salon.image}
+												alt={salon.name}
+												fill
+												className='object-cover group-hover:scale-105 transition-transform duration-700 ease-out'
+											/>
+											{/* Overlays */}
+											<div className='absolute top-4 left-4'>
+												<Badge className='bg-white/90 text-zinc-900 hover:bg-white backdrop-blur-sm border-none shadow-sm font-semibold flex items-center gap-1'>
+													<Star className='w-3.5 h-3.5 text-yellow-500 fill-yellow-500' />
+													{salon.rating}{' '}
+													<span className='text-zinc-500 font-normal'>
+														({salon.reviews})
+													</span>
+												</Badge>
+											</div>
+											<div className='absolute bottom-4 right-4'>
+												<Badge
+													variant='secondary'
+													className='bg-zinc-900/80 text-white hover:bg-zinc-900 backdrop-blur-md border-none font-medium text-xs px-2.5 py-1 flex items-center gap-1.5 rounded-lg shadow-md'
+												>
+													<MapPin className='w-3 h-3 text-white/80' />{' '}
+													{salon.distance}
+												</Badge>
 											</div>
 										</div>
 
-										<p className='text-sm text-zinc-500 mb-4 flex-grow flex items-start gap-1.5 mt-1'>
-											<MapPin className='w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5' />
-											<span className='line-clamp-2'>{salon.address}</span>
-										</p>
-
-										<div className='space-y-3 mb-6'>
-											<div className='flex flex-wrap gap-1.5'>
-												{salon.services.slice(0, 3).map((service, idx) => (
-													<span
-														key={idx}
-														className='inline-flex items-center px-2 py-1 rounded bg-zinc-50 text-xs font-medium text-zinc-600 border border-zinc-100'
-													>
-														{service}
-													</span>
-												))}
-												{salon.services.length > 3 && (
-													<span className='inline-flex items-center px-2 py-1 rounded bg-zinc-50 text-xs font-medium text-zinc-600 border border-zinc-100'>
-														+{salon.services.length - 3}
-													</span>
-												)}
-											</div>
-										</div>
-
-										{/* Footer of Card */}
-										<div className='pt-4 border-t border-zinc-100 mt-auto flex items-center justify-between'>
-											<div>
-												<p className='text-xs text-zinc-400 mb-0.5'>
-													Xizmatlar narxi
-												</p>
-												<p className='text-zinc-900 font-semibold'>
-													{salon.minPrice}{' '}
-													<span className='text-zinc-400 text-sm font-normal'>
-														dan
-													</span>
-												</p>
+										{/* Content Area */}
+										<CardContent className='p-6 flex-grow flex flex-col'>
+											<div className='flex justify-between items-start mb-2'>
+												<div>
+													<p className='text-xs font-semibold tracking-wider text-zinc-400 uppercase mb-1'>
+														{salon.type}
+													</p>
+													<h3 className='text-xl font-bold text-zinc-900 group-hover:text-zinc-700 transition-colors line-clamp-1'>
+														{salon.name}
+													</h3>
+												</div>
 											</div>
 
-											<Button
-												asChild
-												className='rounded-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-5 shadow-sm'
-											>
-												<Link href={`/salons/${salon.id}`}>Bron qilish</Link>
-											</Button>
-										</div>
-									</CardContent>
-								</Card>
+											<p className='text-sm text-zinc-500 mb-4 flex-grow flex items-start gap-1.5 mt-1'>
+												<MapPin className='w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5' />
+												<span className='line-clamp-2'>{salon.address}</span>
+											</p>
+
+											<div className='space-y-3 mb-6'>
+												<div className='flex flex-wrap gap-1.5'>
+													{salon.services.slice(0, 3).map((service, idx) => (
+														<span
+															key={idx}
+															className='inline-flex items-center px-2 py-1 rounded bg-zinc-50 text-xs font-medium text-zinc-600 border border-zinc-100'
+														>
+															{service}
+														</span>
+													))}
+													{salon.services.length > 3 && (
+														<span className='inline-flex items-center px-2 py-1 rounded bg-zinc-50 text-xs font-medium text-zinc-600 border border-zinc-100'>
+															+{salon.services.length - 3}
+														</span>
+													)}
+												</div>
+											</div>
+
+											{/* Footer of Card */}
+											<div className='pt-4 border-t border-zinc-100 mt-auto flex items-center justify-between'>
+												<div>
+													<p className='text-xs text-zinc-400 mb-0.5'>
+														Xizmatlar narxi
+													</p>
+													<p className='text-zinc-900 font-semibold'>
+														{salon.minPrice}{' '}
+														<span className='text-zinc-400 text-sm font-normal'>
+															dan
+														</span>
+													</p>
+												</div>
+
+												<Button
+													asChild
+													className='rounded-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium px-5 shadow-sm'
+												>
+													<Link href={`/salons/${salon.id}`}>Bron qilish</Link>
+												</Button>
+											</div>
+										</CardContent>
+									</Card>
+								</motion.div>
 							))
 						)}
 					</div>

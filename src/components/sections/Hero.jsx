@@ -16,34 +16,33 @@ export default function Hero() {
 						initial={{ opacity: 0, y: 15 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.6, ease: 'easeOut' }}
-						className='inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-zinc-600 font-medium text-xs tracking-wide uppercase mb-8 shadow-sm'
+						className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-800 font-semibold text-xs tracking-wider uppercase mb-8 shadow-sm'
 					>
-						<Star className='w-3.5 h-3.5 fill-current' />
-						<span>Premium Go'zallik Platformasi</span>
+						<Star className='w-4 h-4 text-yellow-500 fill-current' />
+						<span>O'ZBEKISTONNING №1 GO'ZALLIK PLATFORMASI</span>
 					</motion.div>
 
 					<motion.h1
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.7, delay: 0.1, ease: 'easeOut' }}
-						className='text-5xl md:text-6xl lg:text-7xl font-semibold text-zinc-900 tracking-tight leading-[1.05] mb-6'
+						className='text-5xl md:text-6xl lg:text-[4.5rem] font-bold text-zinc-900 tracking-tight leading-[1.05] mb-6'
 					>
-						O'zingizga qulay <br className='hidden lg:block' />
-						<span className='text-zinc-500 italic font-serif'>
-							vaqt va uslubni
-						</span>{' '}
-						toping.
+						Qidirishga vaqt sarflamang. <br className='hidden lg:block' />
+						<span className='text-transparent bg-clip-text bg-gradient-to-r from-zinc-500 to-zinc-800 italic font-serif'>
+							O'zingizga qulay joy va vaqtni toping.
+						</span>
 					</motion.h1>
 
 					<motion.p
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
-						className='text-lg text-zinc-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-light'
+						className='text-lg md:text-xl text-zinc-600 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-light'
 					>
-						Aura Booking yordamida eng yuqori reytingdagi salonlar va ustalarni
-						kashf eting. O'z ishlari bilan ajralib turadigan mutaxassislarga
-						onlayn navbatga yoziling.
+						Salonlar, Spa markazlar, Massaj xizmatlari va Barbershoplar endi
+						bitta platformada. Uzoq chaqiruvlarsiz telefon orqali onlayn
+						yoziling.
 					</motion.p>
 
 					<motion.div
@@ -54,12 +53,12 @@ export default function Hero() {
 					>
 						<Button
 							size='lg'
-							className='w-full sm:w-auto rounded-full px-8 h-14 bg-zinc-900 text-white hover:bg-zinc-800 hover:shadow-xl transition-all font-medium text-base gap-2 group'
+							className='w-full sm:w-auto rounded-full px-8 h-14 bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-xl transition-all font-semibold text-base gap-2 group'
 							asChild
 						>
 							<Link href='/salons'>
-								Salonlarni izlash{' '}
-								<MapPin className='w-4 h-4 group-hover:scale-110 transition-transform' />
+								Mijoz sifatida izlash{' '}
+								<MapPin className='w-4 h-4 group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform' />
 							</Link>
 						</Button>
 						<Button
@@ -69,10 +68,38 @@ export default function Hero() {
 							asChild
 						>
 							<Link href='#b2b-features'>
-								Biznes uchun{' '}
+								Biznes qo'shish{' '}
 								<ArrowRight className='w-4 h-4 group-hover:translate-x-1 transition-transform' />
 							</Link>
 						</Button>
+					</motion.div>
+
+					<motion.div
+						initial={{ opacity: 0, y: 15 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
+						className='mt-8 pt-8 border-t border-zinc-200/60 max-w-lg mx-auto lg:mx-0'
+					>
+						<p className='text-sm text-zinc-500 mb-4 font-medium'>
+							Siz nima izlayapsiz?
+						</p>
+						<div className='flex flex-wrap items-center justify-center lg:justify-start gap-2.5'>
+							{[
+								'Ayollar Saloni',
+								'Barbershop',
+								'SPA',
+								'Manikur',
+								'Kattalar va Bolalar massaji',
+							].map(tag => (
+								<Link
+									key={tag}
+									href={`/salons?category=${tag.toLowerCase()}`}
+									className='px-4 py-1.5 rounded-full bg-white border border-zinc-200 text-sm text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 transition-colors shadow-sm'
+								>
+									{tag}
+								</Link>
+							))}
+						</div>
 					</motion.div>
 
 					<motion.div
@@ -141,9 +168,9 @@ export default function Hero() {
 							</div>
 							<Link
 								href='/salons/1'
-								className='bg-zinc-900 text-white text-sm font-medium px-4 py-2 rounded-full hover:bg-zinc-800 transition-colors'
+								className='bg-zinc-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-zinc-800 hover:scale-105 transition-all shadow-md'
 							>
-								Bron qilish
+								Xizmatni tanlash
 							</Link>
 						</motion.div>
 					</div>

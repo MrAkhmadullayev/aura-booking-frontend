@@ -7,30 +7,30 @@ import Image from 'next/image'
 const features = [
 	{
 		icon: <CalendarDays className='w-5 h-5 text-white' />,
-		title: 'Kuchli CRM & Kalendar',
+		title: 'Elektron Kalendar',
 		description:
-			"Ustaning har bir soati hisobda. Mos keluvchi vaqtlarni bloklash tizimi orqali double-booking xatolari bo'lmaydi.",
+			"Ustalar va mijozlar vaqtini daftar o'rniga telefonda boshqaring. Hech kimning vaqti ustma-ust tushib qolmaydi.",
 		delay: 0.1,
 	},
 	{
-		icon: <Users className='w-5 h-5 text-white' />,
-		title: 'Yangi Mijozlar',
+		icon: <Wallet className='w-5 h-5 text-white' />,
+		title: 'Pullar Hisob-kitobi',
 		description:
-			"Ilova orqali minglab faol insonlar sizning portfolio va xizmatlaringizni ko'rib bora oladi.",
+			"Kunning oxirida qancha pul tushdi va qancha harajat ketganini tizim o'zi aniq hisoblab ko'rsatib turadi.",
 		delay: 0.2,
 	},
 	{
-		icon: <Wallet className='w-5 h-5 text-white' />,
-		title: "Avtomatlashgan To'lov",
+		icon: <TrendingUp className='w-5 h-5 text-white' />,
+		title: 'Ishchilar Nazorati',
 		description:
-			'Ichki hamyon orqali hisob-kitob. Payme va Click integratsiyasi orqali tezkor tushumlar.',
+			'Qaysi ishchingiz bugun qancha ishladi, necha pul topdi - barchasini uydan chiqmasdan kuzating.',
 		delay: 0.3,
 	},
 	{
-		icon: <TrendingUp className='w-5 h-5 text-white' />,
-		title: 'VIP TOP Algoritm',
+		icon: <Users className='w-5 h-5 text-white' />,
+		title: 'Yangi Mijozlar oqimi',
 		description:
-			"Pullik TOP paketlar yordamida saloningizni raqobatchilardan ko'ra ro'yxat boshida ko'rsating.",
+			"Ilova orqali minglab odamlar sizni ko'radi. Reklama qilmasdan ham doimiy yangi mijozlarga ega bo'ling.",
 		delay: 0.4,
 	},
 ]
@@ -52,19 +52,20 @@ export default function FeaturesB2B() {
 							transition={{ duration: 0.6 }}
 						>
 							<h2 className='text-sm font-semibold tracking-wider text-zinc-400 uppercase mb-3 text-left'>
-								Biznes va Salonlar
+								Biznes egalari uchun
 							</h2>
 							<h3 className='text-4xl md:text-5xl font-semibold mb-6 leading-[1.1] tracking-tight'>
-								Tizimlashtiring. <br />
+								Biznesingizni <br />
 								<span className='text-zinc-500 italic font-serif'>
-									Kengaytiring.{' '}
+									telefonda{' '}
 								</span>
-								Daromad qiling.
+								boshqaring.
 							</h3>
 							<p className='text-lg text-zinc-400 mb-10 leading-relaxed font-light'>
-								Aura Booking sizga shunchaki mijoz yubormaydi, u sizning
-								saloningiz uchun to'liq boshqaruv (CRM) va tahliliy vositani
-								taqdim etadi.
+								Aura loyihasi biznesingizga qanday yordam beradi? Tizim nafaqat
+								yangi mijozlar olib keladi, balki biznesingizdagi{' '}
+								<strong>pul aylanmasi</strong>, navbatlar ro'yxati va doimiy{' '}
+								<strong>hisob-kitoblarni</strong> avtomatlashtiradi.
 							</p>
 						</motion.div>
 

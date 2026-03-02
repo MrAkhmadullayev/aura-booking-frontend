@@ -10,28 +10,28 @@ const features = [
 		icon: <Search className='w-5 h-5 text-zinc-900' />,
 		title: 'Oson qidiruv',
 		description:
-			"Xizmat turi va ustalar reytingi bo'yicha filterlar yordamida tezkor tanlov qiling.",
+			"O'zingizga kerakli xizmat turi va eng yaxshi mutaxassislarni tezkor izlab toping.",
 		delay: 0.1,
 	},
 	{
 		icon: <Map className='w-5 h-5 text-zinc-900' />,
-		title: 'GPS Lokatsiya',
+		title: 'Sizga yaqin joyda',
 		description:
-			"Geolokatsiya orqali o'zingizga eng yaqin (📍 500m) bo'sh ustalarni va salonlarni ko'ring.",
+			"Geolokatsiya orqali o'zingizga eng yaqin bo'lgan salon yoki SPA markazlarni ko'ring.",
 		delay: 0.2,
 	},
 	{
 		icon: <CalendarCheck className='w-5 h-5 text-zinc-900' />,
 		title: 'Onlayn Band qilish',
 		description:
-			"Qo'ng'iroqlarsiz, to'g'ridan-to'g'ri ilova orqali real vaqtda o'zingizga qulay soatni tanlang.",
+			"Qo'ng'iroqlarsiz, to'g'ridan-to'g'ri ilova orqali telefoningizdan o'zingizga qulay soatni tanlang.",
 		delay: 0.3,
 	},
 	{
 		icon: <ShieldCheck className='w-5 h-5 text-zinc-900' />,
-		title: 'Video isbot va Reyting',
+		title: 'Haqiqiy izohlar',
 		description:
-			'Instagram Reels va YouTube orqali usta ishlari bilan real tanishing. Faqat rost izohlar.',
+			"Faqat rostdan borib xizmat olgan odamlarning izohlarini o'qib, ishonchli joyni tanlang.",
 		delay: 0.4,
 	},
 ]
@@ -80,20 +80,19 @@ export default function FeaturesB2C() {
 							transition={{ duration: 0.6 }}
 						>
 							<h2 className='text-sm font-semibold tracking-wider text-zinc-500 uppercase mb-3'>
-								Mijozlar uchun
+								Mijozlarimiz uchun yengillik
 							</h2>
 							<h3 className='text-4xl md:text-5xl font-semibold text-zinc-900 mb-6 tracking-tight'>
-								Vaqtingizni qadrlang.
+								Xizmatlarga yozilish
 								<br />
 								<span className='text-zinc-400 italic font-serif'>
-									Go'zallik orzuingiz
-								</span>{' '}
-								qo'l ostingizda.
+									endi juda oson.
+								</span>
 							</h3>
 							<p className='text-lg text-zinc-600 mb-10 leading-relaxed font-light'>
-								Aura Booking sizga o'z ismining ustalarini topish va uzoq
-								navbatlarsiz, elektron formatda ro'yxatdan o'tish imkonini
-								beradi.
+								Aura sizga nima beradi? Telefon orqali uzoq muzokaralarni
+								unuting. Vaqtingizni qadrlagan holda, aniq reytingga ega
+								joylarni toping va bir zumda band qiling.
 							</p>
 						</motion.div>
 
