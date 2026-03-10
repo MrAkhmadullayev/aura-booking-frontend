@@ -8,6 +8,7 @@ import FeaturesB2B from '@/components/sections/FeaturesB2B'
 import FeaturesB2C from '@/components/sections/FeaturesB2C'
 import Hero from '@/components/sections/Hero'
 import HowItWorks from '@/components/sections/HowItWorks'
+import SalonsList from '@/components/sections/SalonsList'
 import ServicesCarousel from '@/components/sections/ServicesCarousel'
 import Stats from '@/components/sections/Stats'
 import Testimonials from '@/components/sections/Testimonials'
@@ -20,6 +21,7 @@ export default function Home() {
 			<main className='flex-grow'>
 				<Hero />
 				<ServicesCarousel />
+				<SalonsList />
 				<Stats />
 				<EcosystemFeatures />
 				<BusinessGoals />

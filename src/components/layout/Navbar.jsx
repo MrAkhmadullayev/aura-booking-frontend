@@ -1,49 +1,51 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/context/AuthContext'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Home, Info, LogOut, Phone, Scissors, Search, User } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 export default function Navbar() {
 	const pathname = usePathname()
-	const router = useRouter()
-	const isModernDark = false
-
+	const { user: session, logout } = useAuth()
 	const [isOpen, setIsOpen] = useState(false)
-	const [session, setSession] = useState(null)
 	const [mounted, setMounted] = useState(false)
+	const isModernDark = false
 
 	useEffect(() => {
 		setMounted(true)
 		document.body.classList.add('mobile-nav-padding')
-		const checkSession = () => {
-			const data = localStorage.getItem('aura_session')
-			if (data) {
-				try {
-					setSession(JSON.parse(data))
-				} catch (e) {}
-			} else {
-				setSession(null)
-			}
-		}
-
-		checkSession()
-		window.addEventListener('storage', checkSession)
 		return () => {
-			window.removeEventListener('storage', checkSession)
 			document.body.classList.remove('mobile-nav-padding')
 		}
 	}, [])
 
-	const handleLogout = () => {
-		localStorage.removeItem('aura_session')
-		setSession(null)
+	const handleLogout = async () => {
+		await logout()
 		setIsOpen(false)
-		window.dispatchEvent(new Event('storage'))
-		router.refresh()
+	}
+
+	const getDashboardLink = () => {
+		if (!session) return '/login'
+		switch (session.role) {
+			case 'admin':
+				return '/admin/dashboard'
+			case 'business':
+				return '/business/dashboard'
+			case 'employee':
+				return '/employee/dashboard'
+			default:
+				return '/client/dashboard'
+		}
 	}
 
 	const navLinks = [
@@ -84,10 +86,18 @@ export default function Navbar() {
 						</div>
 						<Button
 							variant='outline'
+							className='w-full justify-center h-12 rounded-xl text-zinc-600 hover:bg-zinc-100'
+							asChild
+							onClick={() => setIsOpen(false)}
+						>
+							<Link href={getDashboardLink()}>Dashboard</Link>
+						</Button>
+						<Button
+							variant='outline'
 							onClick={handleLogout}
 							className='w-full justify-center h-12 rounded-xl text-red-600 border-red-100 hover:bg-red-50 hover:text-red-700'
 						>
-							<LogOut className='w-5 h-5 mr-2' /> Profildan chiqish
+							<LogOut className='w-5 h-5 mr-2' /> Tizimdan chiqish
 						</Button>
 					</div>
 				)
@@ -95,29 +105,46 @@ export default function Navbar() {
 
 			return (
 				<div className='flex items-center gap-4'>
-					<div className='flex items-center gap-3'>
-						<div className='h-10 w-10 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center'>
-							<User className='w-5 h-5 text-zinc-600' />
-						</div>
-						<div className='hidden lg:block text-sm'>
-							<p className='font-medium text-zinc-900 leading-none mb-1'>
-								{session.name
-									? session.name
-									: session.role === 'business'
-										? 'Biznes Profil'
-										: 'Mijoz'}
-							</p>
-							<p className='text-zinc-500 text-xs'>{session.phone}</p>
-						</div>
-					</div>
-					<Button
-						variant='ghost'
-						size='icon'
-						onClick={handleLogout}
-						className='h-10 w-10 rounded-full text-zinc-500 hover:text-red-600 hover:bg-red-50 flex-shrink-0'
-					>
-						<LogOut className='w-5 h-5' />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button className='flex items-center gap-3 hover:bg-zinc-50 px-2 py-1.5 rounded-full transition-colors'>
+								<div className='h-10 w-10 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center'>
+									<User className='w-5 h-5 text-zinc-600' />
+								</div>
+								<div className='hidden lg:block text-sm text-left pr-2'>
+									<p className='font-medium text-zinc-900 leading-none mb-1'>
+										{session.name
+											? session.name
+											: session.role === 'business'
+												? 'Biznes Profil'
+												: 'Mijoz'}
+									</p>
+									<p className='text-zinc-500 text-xs'>{session.phone}</p>
+								</div>
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent
+							align='end'
+							className='w-56 rounded-xl p-2 gap-1 flex flex-col'
+						>
+							<DropdownMenuItem asChild className='rounded-lg cursor-pointer'>
+								<Link
+									href={getDashboardLink()}
+									className='flex items-center font-medium'
+								>
+									<User className='mr-2 h-4 w-4 text-zinc-500' />
+									<span>Dashboard</span>
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={handleLogout}
+								className='rounded-lg cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 font-medium'
+							>
+								<LogOut className='mr-2 h-4 w-4' />
+								<span>Tizimdan chiqish</span>
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			)
 		}
@@ -166,7 +193,7 @@ export default function Navbar() {
 	return (
 		<>
 			<nav
-				className={`sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-all duration-300 ${
+				className={`fixed top-0 left-0 z-50 w-full border-b backdrop-blur-xl transition-all duration-300 ${
 					isModernDark
 						? 'bg-zinc-950/80 border-zinc-800'
 						: 'bg-white/80 border-zinc-100'

@@ -5,9 +5,100 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Briefcase, Camera, Image as ImageIcon, MapPin } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import api from '@/lib/api'
+import {
+	Briefcase,
+	Camera,
+	Image as ImageIcon,
+	Loader2,
+	MapPin,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function BusinessSettings() {
+	const { user } = useAuth()
+	const [salon, setSalon] = useState(null)
+	const [isLoading, setIsLoading] = useState(true)
+	const [isSaving, setIsSaving] = useState(false)
+
+	const [formData, setFormData] = useState({
+		name: '',
+		about: '',
+		phone: '',
+		instagram: '',
+		address: '',
+		type: 'Salon',
+	})
+
+	useEffect(() => {
+		const fetchSalon = async () => {
+			try {
+				const res = await api.get('/salons/mine')
+				setSalon(res.data)
+				setFormData({
+					name: res.data.name || '',
+					about: res.data.about || '',
+					phone: res.data.contacts?.phone || '',
+					instagram: res.data.contacts?.instagram || '',
+					address: res.data.address || '',
+					type: res.data.type || 'Salon',
+				})
+			} catch (error) {
+				if (error.response?.status !== 404) {
+					toast.error('Salonni yuklashda xatolik yuz berdi')
+				}
+			} finally {
+				setIsLoading(false)
+			}
+		}
+		if (user) fetchSalon()
+	}, [user])
+
+	const handleSave = async () => {
+		try {
+			setIsSaving(true)
+			const payload = {
+				name: formData.name,
+				about: formData.about,
+				address: formData.address,
+				type: formData.type,
+				contacts: {
+					phone: formData.phone,
+					instagram: formData.instagram,
+				},
+				workHours: '09:00 - 21:00', // hardcoded for now
+			}
+
+			if (salon) {
+				// Update
+				const res = await api.put(`/salons/${salon._id}`, payload)
+				setSalon(res.data)
+				toast.success('Muvaffaqiyatli saqlandi!')
+			} else {
+				// Create
+				const res = await api.post('/salons', payload)
+				setSalon(res.data)
+				toast.success('Salon muvaffaqiyatli yaratildi!')
+			}
+		} catch (error) {
+			toast.error('Xatolik yuz berdi')
+		} finally {
+			setIsSaving(false)
+		}
+	}
+
+	if (isLoading) {
+		return (
+			<DashboardLayout role='business'>
+				<div className='flex items-center justify-center min-h-[60vh]'>
+					<Loader2 className='w-8 h-8 animate-spin text-zinc-400' />
+				</div>
+			</DashboardLayout>
+		)
+	}
+
 	return (
 		<DashboardLayout role='business'>
 			<div className='space-y-6'>
@@ -20,8 +111,16 @@ export default function BusinessSettings() {
 							Salon ma'lumotlari, manzili va ish vaqtlarini tahrirlash.
 						</p>
 					</div>
-					<Button className='bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-sm px-6 font-medium'>
-						Saqlash
+					<Button
+						onClick={handleSave}
+						disabled={isSaving}
+						className='bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl shadow-sm px-6 font-medium'
+					>
+						{isSaving ? (
+							<Loader2 className='w-4 h-4 animate-spin' />
+						) : (
+							'Saqlash'
+						)}
 					</Button>
 				</div>
 
@@ -69,7 +168,11 @@ export default function BusinessSettings() {
 									</Label>
 									<Input
 										id='salonName'
-										defaultValue='Aura Premium Salon'
+										value={formData.name}
+										onChange={e =>
+											setFormData({ ...formData, name: e.target.value })
+										}
+										placeholder='Salon nomi'
 										className='h-12 bg-zinc-50 border-zinc-200 rounded-xl'
 									/>
 								</div>
@@ -79,7 +182,11 @@ export default function BusinessSettings() {
 									</Label>
 									<textarea
 										id='desc'
-										defaultValue='Toshkentdagi eng zamonaviy premium salon. Erkaklar soch va soqol kesish, SPA xizmatlari.'
+										value={formData.about}
+										onChange={e =>
+											setFormData({ ...formData, about: e.target.value })
+										}
+										placeholder="Salon haqida qisqacha ma'lumot..."
 										className='min-h-[100px] p-3 rounded-xl border border-zinc-200 bg-zinc-50 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 resize-y w-full'
 									/>
 								</div>
@@ -105,7 +212,11 @@ export default function BusinessSettings() {
 										</Label>
 										<Input
 											id='phone'
-											defaultValue='+998 99 111 22 33'
+											value={formData.phone}
+											onChange={e =>
+												setFormData({ ...formData, phone: e.target.value })
+											}
+											placeholder='+998 90 123 45 67'
 											className='h-12 bg-zinc-50 border-zinc-200 rounded-xl'
 										/>
 									</div>
@@ -115,7 +226,11 @@ export default function BusinessSettings() {
 										</Label>
 										<Input
 											id='inst'
-											defaultValue='@aura_premium'
+											value={formData.instagram}
+											onChange={e =>
+												setFormData({ ...formData, instagram: e.target.value })
+											}
+											placeholder='@username'
 											className='h-12 bg-zinc-50 border-zinc-200 rounded-xl'
 										/>
 									</div>
@@ -130,7 +245,11 @@ export default function BusinessSettings() {
 									</Label>
 									<Input
 										id='address'
-										defaultValue="Yunusobod tumani, Amir Temur shox ko'chasi 108"
+										value={formData.address}
+										onChange={e =>
+											setFormData({ ...formData, address: e.target.value })
+										}
+										placeholder='Toshkent shahar...'
 										className='h-12 bg-zinc-50 border-zinc-200 rounded-xl'
 									/>
 								</div>

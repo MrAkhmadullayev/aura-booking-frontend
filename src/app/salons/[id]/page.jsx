@@ -5,22 +5,19 @@ import Navbar from '@/components/layout/Navbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover'
-import { mockSalons } from '@/data/salons'
-import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import api from '@/lib/api'
 import { format } from 'date-fns'
+import 'leaflet/dist/leaflet.css'
 import {
-	Calendar as CalendarIcon,
 	CheckCircle2,
 	ChevronLeft,
 	ChevronRight,
 	Info,
 	Instagram,
+	Loader2,
 	MapPin,
+	MessageCircle,
 	Navigation,
 	Phone,
 	PlaySquare,
@@ -28,23 +25,175 @@ import {
 	Share2,
 	Star,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { use, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { use, useEffect, useState } from 'react'
 
-const getSalonData = id => {
-	return mockSalons.find(s => s.id === parseInt(id)) || mockSalons[0]
-}
+const MapContainer = dynamic(
+	() => import('react-leaflet').then(mod => mod.MapContainer),
+	{ ssr: false },
+)
+const TileLayer = dynamic(
+	() => import('react-leaflet').then(mod => mod.TileLayer),
+	{ ssr: false },
+)
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), {
+	ssr: false,
+})
 
 export default function SalonDetailPage({ params }) {
 	const resolvedParams = use(params)
-	const salon = getSalonData(resolvedParams.id)
+	const router = useRouter()
+	const { user: session, isLoading: authLoading } = useAuth()
+
+	const [salon, setSalon] = useState(null)
+	const [isLoading, setIsLoading] = useState(true)
+
 	const [date, setDate] = useState(new Date())
 	const [selectedTime, setSelectedTime] = useState(null)
-	const [bookingStep, setBookingStep] = useState(1) // 1: Xizmat, 2: Kun & Vaqt
-	const [isLoggedIn, setIsLoggedIn] = useState(false) // Fake auth state
+	const [bookingStep, setBookingStep] = useState(1) // 1: Xizmat, 2: Xodim, 3: Kun, 4: Vaqt
 	const [selectedService, setSelectedService] = useState(null)
+	const [selectedEmployee, setSelectedEmployee] = useState(null)
+	const [isBooking, setIsBooking] = useState(false)
+	const [employees, setEmployees] = useState([])
+	const [services, setServices] = useState([])
 
-	const timeSlots = ['10:00', '11:30', '13:00', '15:00', '16:30', '18:00']
+	const [availableTimes, setAvailableTimes] = useState([])
+	const [isLoadingTimes, setIsLoadingTimes] = useState(false)
+
+	useEffect(() => {
+		const fetchSalon = async () => {
+			try {
+				const res = await api.get(`/salons/${resolvedParams.id}`)
+				const formattedSalon = {
+					...res.data,
+					id: res.data._id,
+					distance: '', // fallback
+					services: res.data.services || ['Soch kesish', 'Soqol tekislash'], // fallback
+					minPrice: '50000', // fallback
+					rating: res.data.rating || 5.0,
+					reviews: res.data.reviewCount || 12,
+					image:
+						res.data.coverImage ||
+						'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80',
+					about: res.data.about || "Kompaniya haqida ma'lumot...",
+					workHours: Array.isArray(res.data.workHours)
+						? res.data.workHours
+						: '09:00 - 20:00',
+					contacts: res.data.contacts || { phone: '+998' },
+					gallery:
+						res.data.gallery?.length > 0
+							? res.data.gallery
+							: [
+									'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&q=80',
+									'https://images.unsplash.com/photo-1562322140-8baeececf3ce?auto=format&fit=crop&q=80',
+								],
+					comments: res.data.comments || [],
+					location: res.data.location || {
+						lat: 41.2995,
+						lng: 69.2401,
+					},
+				}
+				setSalon(formattedSalon)
+
+				// Fetch Real Services and Employees for this Salon
+				const [srvRes, empRes] = await Promise.all([
+					api
+						.get(`/services/salon/${res.data._id}`)
+						.catch(() => ({ data: [] })),
+					api
+						.get(`/salons/${res.data._id}/employees`)
+						.catch(() => ({ data: [] })),
+				])
+				setServices(srvRes.data)
+				setEmployees(empRes.data)
+			} catch (error) {
+				console.error('Error fetching salon detail:', error)
+			} finally {
+				setIsLoading(false)
+			}
+		}
+		if (resolvedParams.id) fetchSalon()
+	}, [resolvedParams.id])
+
+	// Fetch available times when Date and Employee are selected
+	useEffect(() => {
+		const fetchTimes = async () => {
+			if (!selectedEmployee || !date || !salon?.id) return
+			try {
+				setIsLoadingTimes(true)
+				const res = await api.post('/bookings/available', {
+					salonId: salon.id,
+					employeeId: selectedEmployee._id,
+					date: format(date, 'yyyy-MM-dd'),
+				})
+				setAvailableTimes(res.data.availableTimes || [])
+			} catch (error) {
+				console.error('Error fetching available times', error)
+				setAvailableTimes([])
+			} finally {
+				setIsLoadingTimes(false)
+			}
+		}
+
+		if (bookingStep === 4) {
+			fetchTimes()
+		}
+	}, [date, selectedEmployee, salon?.id, bookingStep])
+
+	const handleBooking = async () => {
+		if (!session) return router.push('/login')
+
+		try {
+			setIsBooking(true)
+			const payload = {
+				salonId: salon.id,
+				serviceId: selectedService._id,
+				employeeId: selectedEmployee._id,
+				date: format(date, 'yyyy-MM-dd'),
+				time: selectedTime,
+				totalPrice: selectedService.price || 50000,
+			}
+
+			await api.post('/bookings', payload)
+			alert('Muvaffaqiyatli band qilindi!')
+			router.push('/client/bookings')
+		} catch (error) {
+			console.error('Error making booking', error)
+			alert(
+				error.response?.data?.message ||
+					"Xatolik yuz berdi. Iltimos qaytadan urinib ko'ring.",
+			)
+		} finally {
+			setIsBooking(false)
+		}
+	}
+
+	if (isLoading) {
+		return (
+			<div className='min-h-screen flex items-center justify-center bg-zinc-50'>
+				<Loader2 className='w-12 h-12 animate-spin text-zinc-400' />
+			</div>
+		)
+	}
+
+	if (!salon) {
+		return (
+			<div className='min-h-screen flex items-center justify-center bg-zinc-50 flex-col gap-4'>
+				<h2 className='text-2xl font-bold'>Salon topilmadi</h2>
+				<Link
+					href='/salons'
+					className='text-zinc-500 hover:text-zinc-900 underline'
+				>
+					Ortga qaytish
+				</Link>
+			</div>
+		)
+	}
+
+	const isLoggedIn = !!session
 
 	return (
 		<div className='min-h-screen flex flex-col font-sans bg-zinc-50 selection:bg-zinc-200 selection:text-zinc-900'>
@@ -129,9 +278,36 @@ export default function SalonDetailPage({ params }) {
 										<p className='text-sm text-zinc-500 font-medium mb-2 uppercase tracking-wider'>
 											Ish vaqti
 										</p>
-										<p className='font-semibold text-zinc-900 text-lg'>
-											{salon.workHours}
-										</p>
+										{Array.isArray(salon.workHours) ? (
+											<div className='flex flex-col gap-1'>
+												{salon.workHours
+													.filter(wh => wh.isOpen)
+													.slice(0, 3)
+													.map((wh, idx) => (
+														<p
+															key={idx}
+															className='font-semibold text-zinc-900 text-sm'
+														>
+															{wh.day}: {wh.open} - {wh.close}
+														</p>
+													))}
+												{salon.workHours.filter(wh => wh.isOpen).length > 3 && (
+													<p className='text-xs text-zinc-500'>
+														Va boshqa kunlar...
+													</p>
+												)}
+												{salon.workHours.filter(wh => wh.isOpen).length ===
+													0 && (
+													<p className='font-semibold text-zinc-900 text-sm'>
+														Vaqt belgilanmagan
+													</p>
+												)}
+											</div>
+										) : (
+											<p className='font-semibold text-zinc-900 text-lg'>
+												{salon.workHours}
+											</p>
+										)}
 										<div className='inline-flex items-center gap-1.5 mt-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-semibold'>
 											<span className='w-1.5 h-1.5 rounded-full bg-green-500'></span>{' '}
 											{salon.status}
@@ -218,12 +394,12 @@ export default function SalonDetailPage({ params }) {
 										Onlayn yozilish
 									</h3>
 									<div className='flex gap-1'>
-										<div
-											className={`h-1.5 w-6 rounded-full transition-colors ${bookingStep >= 1 ? 'bg-zinc-900' : 'bg-zinc-200'}`}
-										></div>
-										<div
-											className={`h-1.5 w-6 rounded-full transition-colors ${bookingStep >= 2 ? 'bg-zinc-900' : 'bg-zinc-200'}`}
-										></div>
+										{[1, 2, 3, 4].map(step => (
+											<div
+												key={step}
+												className={`h-1.5 w-4 rounded-full transition-colors ${bookingStep >= step ? 'bg-zinc-900' : 'bg-zinc-200'}`}
+											></div>
+										))}
 									</div>
 								</div>
 
@@ -236,29 +412,41 @@ export default function SalonDetailPage({ params }) {
 											</span>
 											Xizmat turini tanlang
 										</h4>
-										<div className='space-y-2 mb-8'>
-											{salon.services.map((service, idx) => (
-												<div
-													key={idx}
-													onClick={() => setSelectedService(service)}
-													className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group ${
-														selectedService === service
-															? 'border-zinc-900 bg-zinc-50'
-															: 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
-													}`}
-												>
-													<span
-														className={`font-medium ${selectedService === service ? 'text-zinc-900' : 'text-zinc-700'}`}
+										<div className='space-y-2 mb-8 max-h-[300px] overflow-y-auto px-1'>
+											{services.length === 0 ? (
+												<p className='text-zinc-500 text-sm text-center py-4'>
+													Bu filialga xizmatlar qo'shilmagan
+												</p>
+											) : (
+												services.map((service, idx) => (
+													<div
+														key={service._id}
+														onClick={() => setSelectedService(service)}
+														className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group ${
+															selectedService?._id === service._id
+																? 'border-zinc-900 bg-zinc-50'
+																: 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
+														}`}
 													>
-														{service}
-													</span>
-													{selectedService === service ? (
-														<CheckCircle2 className='w-5 h-5 text-zinc-900' />
-													) : (
-														<div className='w-5 h-5 rounded-full border-2 border-zinc-200 group-hover:border-zinc-300'></div>
-													)}
-												</div>
-											))}
+														<div>
+															<span
+																className={`font-medium block ${selectedService?._id === service._id ? 'text-zinc-900' : 'text-zinc-700'}`}
+															>
+																{service.name}
+															</span>
+															<span className='text-xs text-zinc-500 mt-1'>
+																{service.duration} •{' '}
+																{service.price?.toLocaleString()} so'm
+															</span>
+														</div>
+														{selectedService?._id === service._id ? (
+															<CheckCircle2 className='w-5 h-5 text-zinc-900' />
+														) : (
+															<div className='w-5 h-5 rounded-full border-2 border-zinc-200 group-hover:border-zinc-300'></div>
+														)}
+													</div>
+												))
+											)}
 										</div>
 
 										<Button
@@ -267,12 +455,12 @@ export default function SalonDetailPage({ params }) {
 											size='lg'
 											className='w-full h-14 rounded-xl bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-all text-base gap-2'
 										>
-											Keyingi qadam <ChevronRight className='w-5 h-5' />
+											Davom etish <ChevronRight className='w-5 h-5' />
 										</Button>
 									</div>
 								)}
 
-								{/* Step 2: Date & Time */}
+								{/* Step 2: Employee */}
 								{bookingStep === 2 && (
 									<div className='animate-in fade-in slide-in-from-right-4 duration-300'>
 										<button
@@ -282,80 +470,197 @@ export default function SalonDetailPage({ params }) {
 											<ChevronLeft className='w-4 h-4 mr-1' /> Orqaga
 										</button>
 
-										{/* Details Card Summary */}
-										<div className='bg-zinc-50 p-4 rounded-xl mb-6 border border-zinc-100'>
-											<p className='text-xs text-zinc-500 font-medium uppercase tracking-wider mb-1'>
-												Tanlangan xizmat
-											</p>
-											<p className='text-sm font-semibold text-zinc-900'>
-												{selectedService}
-											</p>
-										</div>
-
 										<h4 className='text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-4 flex items-center gap-2'>
 											<span className='flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-zinc-900 text-xs'>
 												2
 											</span>
-											Kun va vaqt
+											Ustani tanlang
 										</h4>
-
-										<div className='mb-6'>
-											<Popover>
-												<PopoverTrigger asChild>
-													<Button
-														variant={'outline'}
-														className={cn(
-															'w-full h-14 justify-start text-left font-medium rounded-xl border-zinc-200',
-															!date && 'text-muted-foreground',
-														)}
-													>
-														<CalendarIcon className='mr-2 h-5 w-5' />
-														{date ? (
-															format(date, 'PPP')
-														) : (
-															<span>Kunni tanlang</span>
-														)}
-													</Button>
-												</PopoverTrigger>
-												<PopoverContent
-													className='w-auto p-0 rounded-2xl'
-													align='start'
-												>
-													<Calendar
-														mode='single'
-														selected={date}
-														onSelect={setDate}
-														initialFocus
-														className='rounded-xl border-none'
-													/>
-												</PopoverContent>
-											</Popover>
-										</div>
-
-										<div className='mb-8'>
-											<div className='grid grid-cols-3 gap-2'>
-												{timeSlots.map(time => (
-													<Button
-														key={time}
-														variant={
-															selectedTime === time ? 'default' : 'outline'
-														}
-														onClick={() => setSelectedTime(time)}
-														className={`h-12 rounded-xl text-sm font-medium transition-all ${
-															selectedTime === time
-																? 'bg-zinc-900 text-white shadow-md'
-																: 'text-zinc-700 bg-white border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300'
+										<div className='space-y-2 mb-8 max-h-[300px] overflow-y-auto px-1'>
+											{employees.length === 0 ? (
+												<p className='text-zinc-500 text-sm text-center py-4'>
+													Bu filialga ustalar qo'shilmagan
+												</p>
+											) : (
+												employees.map(emp => (
+													<div
+														key={emp._id}
+														onClick={() => setSelectedEmployee(emp)}
+														className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group ${
+															selectedEmployee?._id === emp._id
+																? 'border-zinc-900 bg-zinc-50'
+																: 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
 														}`}
 													>
-														{time}
-													</Button>
-												))}
+														<div className='flex items-center gap-3'>
+															<div className='w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center font-bold text-zinc-700'>
+																{emp.name.charAt(0)}
+															</div>
+															<div>
+																<span
+																	className={`font-medium block ${selectedEmployee?._id === emp._id ? 'text-zinc-900' : 'text-zinc-700'}`}
+																>
+																	{emp.name}
+																</span>
+																{emp.about && (
+																	<span className='text-[10px] text-zinc-400 mt-0.5 max-w-[150px] line-clamp-1'>
+																		{emp.about}
+																	</span>
+																)}
+															</div>
+														</div>
+														{selectedEmployee?._id === emp._id ? (
+															<CheckCircle2 className='w-5 h-5 text-zinc-900' />
+														) : (
+															<div className='w-5 h-5 rounded-full border-2 border-zinc-200 group-hover:border-zinc-300'></div>
+														)}
+													</div>
+												))
+											)}
+										</div>
+
+										<Button
+											onClick={() => setBookingStep(3)}
+											disabled={!selectedEmployee}
+											size='lg'
+											className='w-full h-14 rounded-xl bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-all text-base gap-2'
+										>
+											Davom etish <ChevronRight className='w-5 h-5' />
+										</Button>
+									</div>
+								)}
+
+								{/* Step 3: Date */}
+								{bookingStep === 3 && (
+									<div className='animate-in fade-in slide-in-from-right-4 duration-300'>
+										<button
+											onClick={() => setBookingStep(2)}
+											className='mb-6 flex items-center text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors'
+										>
+											<ChevronLeft className='w-4 h-4 mr-1' /> Orqaga
+										</button>
+
+										<h4 className='text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-4 flex items-center gap-2'>
+											<span className='flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-zinc-900 text-xs'>
+												3
+											</span>
+											Kunni tanlang
+										</h4>
+
+										<div className='mb-8 flex justify-center'>
+											<Calendar
+												mode='single'
+												selected={date}
+												onSelect={newDate => {
+													if (newDate) setDate(newDate)
+												}}
+												initialFocus
+												disabled={d =>
+													d < new Date(new Date().setHours(0, 0, 0, 0))
+												}
+												className='rounded-xl border border-zinc-200 p-3'
+											/>
+										</div>
+
+										<Button
+											onClick={() => setBookingStep(4)}
+											disabled={!date}
+											size='lg'
+											className='w-full h-14 rounded-xl bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-all text-base gap-2'
+										>
+											Davom etish <ChevronRight className='w-5 h-5' />
+										</Button>
+									</div>
+								)}
+
+								{/* Step 4: Time */}
+								{bookingStep === 4 && (
+									<div className='animate-in fade-in slide-in-from-right-4 duration-300'>
+										<button
+											onClick={() => {
+												setBookingStep(3)
+												setSelectedTime(null)
+											}}
+											className='mb-6 flex items-center text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors'
+										>
+											<ChevronLeft className='w-4 h-4 mr-1' /> Orqaga
+										</button>
+
+										{/* Details Card Summary */}
+										<div className='bg-zinc-50 p-4 rounded-xl mb-6 border border-zinc-100'>
+											<div className='flex justify-between items-center mb-2'>
+												<span className='text-xs text-zinc-500 font-medium uppercase tracking-wider'>
+													Xizmat
+												</span>
+												<span className='text-sm font-semibold text-zinc-900'>
+													{selectedService?.name}
+												</span>
 											</div>
+											<div className='flex justify-between items-center mb-2'>
+												<span className='text-xs text-zinc-500 font-medium uppercase tracking-wider'>
+													Usta
+												</span>
+												<span className='text-sm font-semibold text-zinc-900'>
+													{selectedEmployee?.name}
+												</span>
+											</div>
+											<div className='flex justify-between items-center'>
+												<span className='text-xs text-zinc-500 font-medium uppercase tracking-wider'>
+													Sana
+												</span>
+												<span className='text-sm font-semibold text-zinc-900'>
+													{format(date, 'PPP')}
+												</span>
+											</div>
+										</div>
+
+										<h4 className='text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-4 flex items-center gap-2'>
+											<span className='flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-zinc-900 text-xs'>
+												4
+											</span>
+											Bosh vaqtlar
+										</h4>
+
+										<div className='mb-8'>
+											{isLoadingTimes ? (
+												<div className='flex justify-center py-8'>
+													<Loader2 className='w-8 h-8 animate-spin text-zinc-400' />
+												</div>
+											) : availableTimes.length === 0 ? (
+												<div className='text-center py-6 border-2 border-dashed border-zinc-200 rounded-xl'>
+													<p className='text-sm text-zinc-500 font-medium'>
+														Bu kunga bo'sh vaqtlar qolmagan
+													</p>
+													<p className='text-xs text-zinc-400 mt-1'>
+														Boshqa kunni tanlab ko'ring
+													</p>
+												</div>
+											) : (
+												<div className='grid grid-cols-3 gap-3'>
+													{availableTimes.map(time => (
+														<Button
+															key={time}
+															variant={
+																selectedTime === time ? 'default' : 'outline'
+															}
+															onClick={() => setSelectedTime(time)}
+															className={`h-12 rounded-xl text-sm font-medium transition-all ${
+																selectedTime === time
+																	? 'bg-zinc-900 text-white shadow-md'
+																	: 'text-zinc-700 bg-white border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300'
+															}`}
+														>
+															{time}
+														</Button>
+													))}
+												</div>
+											)}
 										</div>
 
 										<div className='pt-2'>
 											{!isLoggedIn ? (
 												<Button
+													onClick={() => router.push('/login')}
 													size='lg'
 													className='w-full h-14 rounded-xl bg-zinc-900 text-white font-medium shadow-md hover:bg-zinc-800 transition-all text-base'
 												>
@@ -363,11 +668,16 @@ export default function SalonDetailPage({ params }) {
 												</Button>
 											) : (
 												<Button
-													disabled={!date || !selectedTime}
+													onClick={handleBooking}
+													disabled={!date || !selectedTime || isBooking}
 													size='lg'
 													className='w-full h-14 rounded-xl bg-zinc-900 text-white font-medium shadow-md hover:bg-zinc-800 transition-all text-base'
 												>
-													Band qilish
+													{isBooking ? (
+														<Loader2 className='w-5 h-5 animate-spin' />
+													) : (
+														'Band qilish'
+													)}
 												</Button>
 											)}
 											<p className='text-center text-xs text-zinc-400 mt-4 font-medium'>
@@ -454,18 +764,32 @@ export default function SalonDetailPage({ params }) {
 									Joylashuv
 								</h2>
 								<div className='w-full h-[400px] md:h-[500px] bg-zinc-100 rounded-[2rem] overflow-hidden border border-zinc-200 relative group shadow-sm'>
-									<iframe
-										src={salon.location?.mapUrl}
-										width='100%'
-										height='100%'
-										style={{ border: 0 }}
-										allowFullScreen=''
-										loading='lazy'
-										referrerPolicy='no-referrer-when-downgrade'
-										className='grayscale-[30%] group-hover:grayscale-0 transition-all duration-700'
-									></iframe>
+									{typeof window !== 'undefined' &&
+									salon.location?.lat &&
+									salon.location?.lng ? (
+										<div className='w-full h-full grayscale-[10%] group-hover:grayscale-0 transition-all duration-700 relative z-0'>
+											<MapContainer
+												center={[salon.location.lat, salon.location.lng]}
+												zoom={14}
+												style={{ height: '100%', width: '100%' }}
+											>
+												<TileLayer
+													attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+													url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+												/>
+												<Marker
+													position={[salon.location.lat, salon.location.lng]}
+												/>
+											</MapContainer>
+										</div>
+									) : (
+										<div className='w-full h-full flex flex-col items-center justify-center text-zinc-400'>
+											<MapPin className='w-10 h-10 mb-2' />
+											<p>Joylashuv belgilanmagan</p>
+										</div>
+									)}
 
-									<div className='absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl flex items-center gap-4 border border-white/20'>
+									<div className='absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl flex items-center gap-4 border border-white/20 z-10'>
 										<div className='p-3 bg-zinc-900 rounded-xl text-white'>
 											<MapPin className='w-5 h-5' />
 										</div>

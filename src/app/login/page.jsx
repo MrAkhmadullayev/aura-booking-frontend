@@ -2,57 +2,24 @@
 
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/context/AuthContext'
 import { motion } from 'framer-motion'
-import {
-	ArrowLeft,
-	Building,
-	Chrome,
-	Eye,
-	EyeOff,
-	Scissors,
-} from 'lucide-react'
+import { ArrowLeft, Building, Eye, EyeOff, Scissors } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { PatternFormat } from 'react-number-format'
 
-const MOCK_USERS = [
-	{
-		id: 'adm_1',
-		name: 'Admin',
-		phone: '+998901234567',
-		password: 'password123',
-		role: 'admin',
-		token: 'admin-token-xyz',
-	},
-	{
-		id: 'biz_1',
-		name: 'Aura Premium Salon',
-		phone: '+998991112233',
-		password: 'password123',
-		role: 'business',
-		token: 'biz-token-xyz',
-	},
-	{
-		id: 'usr_1',
-		name: 'Sadriddin (Mijoz)',
-		phone: '+998940001122',
-		password: 'password123',
-		role: 'client',
-		token: 'client-token-xyz',
-	},
-]
-
 export default function LoginPage() {
 	const router = useRouter()
+	const { login } = useAuth()
 	const [showPassword, setShowPassword] = useState(false)
 	const [phone, setPhone] = useState('')
 	const [password, setPassword] = useState('')
 	const [error, setError] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
-
-	const handleLogin = e => {
+	const handleLogin = async e => {
 		e.preventDefault()
 		setError('')
 
@@ -62,34 +29,17 @@ export default function LoginPage() {
 		}
 
 		setIsLoading(true)
-		// Simulate API call
-		setTimeout(() => {
+		try {
 			const cleanPhone = '+998' + phone.replace(/[^0-9]/g, '')
+			const data = await login(cleanPhone, password)
 
-			// Mock finding user
-			const user = MOCK_USERS.find(
-				u => u.phone === cleanPhone && u.password === password,
+			router.push(`/${data.role}/dashboard`)
+		} catch (err) {
+			setError(
+				err.response?.data?.message || "Telefon raqam yoki parol noto'g'ri",
 			)
-
-			if (user) {
-				const sessionData = {
-					id: user.id,
-					name: user.name,
-					phone: user.phone,
-					role: user.role,
-					token: user.token,
-				}
-
-				localStorage.setItem('aura_session', JSON.stringify(sessionData))
-
-				window.dispatchEvent(new Event('storage'))
-				router.push(`/${user.role}/dashboard`)
-				router.refresh()
-			} else {
-				setError("Telefon raqam yoki parol noto'g'ri")
-				setIsLoading(false)
-			}
-		}, 800)
+			setIsLoading(false)
+		}
 	}
 
 	return (
@@ -221,38 +171,6 @@ export default function LoginPage() {
 						</motion.div>
 					)}
 
-					{/* Demo Accounts Info */}
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						transition={{ delay: 0.3 }}
-						className='mb-8 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl'
-					>
-						<p className='text-xs font-semibold text-blue-900 mb-3 uppercase tracking-wider'>
-							Test hisoblari (Parol: password123)
-						</p>
-						<div className='space-y-2 text-sm text-blue-800'>
-							<div className='flex justify-between items-center'>
-								<span className='opacity-70'>Admin:</span>{' '}
-								<span className='font-mono bg-blue-100 px-2 py-0.5 rounded text-xs select-all'>
-									90 123 45 67
-								</span>
-							</div>
-							<div className='flex justify-between items-center'>
-								<span className='opacity-70'>Salon:</span>{' '}
-								<span className='font-mono bg-blue-100 px-2 py-0.5 rounded text-xs select-all'>
-									99 111 22 33
-								</span>
-							</div>
-							<div className='flex justify-between items-center'>
-								<span className='opacity-70'>Mijoz:</span>{' '}
-								<span className='font-mono bg-blue-100 px-2 py-0.5 rounded text-xs select-all'>
-									94 000 11 22
-								</span>
-							</div>
-						</div>
-					</motion.div>
-
 					{/* Unified Login Form */}
 					<form onSubmit={handleLogin} className='flex flex-col gap-6 relative'>
 						<div className='space-y-2'>
@@ -318,27 +236,6 @@ export default function LoginPage() {
 							{isLoading ? 'Iltimos, kuting...' : 'Kirish'}
 						</Button>
 					</form>
-
-					<div className='relative my-10'>
-						<div className='absolute inset-0 flex items-center'>
-							<div className='w-full border-t border-zinc-200'></div>
-						</div>
-						<div className='relative flex justify-center text-sm'>
-							<span className='px-4 bg-zinc-50 text-zinc-500 font-medium'>
-								Yoki
-							</span>
-						</div>
-					</div>
-
-					<div className='space-y-4'>
-						<Button
-							variant='outline'
-							className='w-full h-12 rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 font-medium text-zinc-700 transition-colors'
-						>
-							<Chrome className='w-5 h-5 mr-3 text-zinc-700' /> Google orqali
-							davom etish
-						</Button>
-					</div>
 
 					<p className='text-center text-sm text-zinc-500 mt-10 font-medium'>
 						Hali profilingiz yo'qmi?{' '}

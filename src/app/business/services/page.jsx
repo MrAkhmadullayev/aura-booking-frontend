@@ -25,6 +25,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import api from '@/lib/api'
 import {
 	Clock,
 	Edit2,
@@ -34,77 +36,46 @@ import {
 	Trash2,
 	Wallet,
 } from 'lucide-react'
-import { useState } from 'react'
-
-const initialServices = [
-	{
-		id: 1,
-		category: 'Soch kesish',
-		name: 'Erkaklar soch kesish (Klassika)',
-		duration: '45 daq',
-		price: '80000',
-		status: 'Faol',
-	},
-	{
-		id: 2,
-		category: 'Soch kesish',
-		name: 'Soch kesish (Fade/Kroft)',
-		duration: '60 daq',
-		price: '120000',
-		status: 'Faol',
-	},
-	{
-		id: 3,
-		category: 'Soch kesish',
-		name: 'Bolalar soch kesish (12 yoshgacha)',
-		duration: '30 daq',
-		price: '50000',
-		status: 'Faol',
-	},
-	{
-		id: 4,
-		category: 'Soqol',
-		name: 'Soqol tekislash va qurtartirish',
-		duration: '30 daq',
-		price: '60000',
-		status: 'Faol',
-	},
-	{
-		id: 5,
-		category: 'Soqol',
-		name: "Soqolni to'liq olish (Qirolicha)",
-		duration: '40 daq',
-		price: '80000',
-		status: 'Faol',
-	},
-	{
-		id: 6,
-		category: 'Qoshish',
-		name: 'Yuz tozalash (Qora niqob)',
-		duration: '20 daq',
-		price: '40000',
-		status: 'Faol',
-	},
-	{
-		id: 7,
-		category: 'Qoshish',
-		name: "Soch bo'yash (Qora/Jigarrang)",
-		duration: '90 daq',
-		price: '250000',
-		status: 'Nofaol',
-	},
-]
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function BusinessServices() {
-	const [services, setServices] = useState(initialServices)
+	const [services, setServices] = useState([])
+	const [salons, setSalons] = useState([])
 	const [searchQuery, setSearchQuery] = useState('')
+	const [selectedSalonFilter, setSelectedSalonFilter] = useState('all')
+	const [isLoading, setIsLoading] = useState(true)
 
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 	const [currentService, setCurrentService] = useState(null)
 
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				setIsLoading(true)
+				const [salonsRes, servicesRes] = await Promise.all([
+					api.get('/salons/mine'),
+					api.get('/services'),
+				])
+				setSalons(salonsRes.data)
+				setServices(servicesRes.data)
+
+				if (salonsRes.data.length > 0) {
+					setFormData(prev => ({ ...prev, salonId: salonsRes.data[0]._id }))
+				}
+			} catch (error) {
+				toast.error("Ma'lumotlarni yuklashda xatolik yuz berdi")
+			} finally {
+				setIsLoading(false)
+			}
+		}
+		fetchData()
+	}, [])
+
 	// Form states
 	const [formData, setFormData] = useState({
+		salonId: '',
 		name: '',
 		category: 'Soch kesish',
 		duration: '30 daq',
@@ -117,37 +88,71 @@ export default function BusinessServices() {
 	}
 
 	// Filter and Group Services
-	const filteredServices = services.filter(s =>
+	let filteredServices = services.filter(s =>
 		s.name.toLowerCase().includes(searchQuery.toLowerCase()),
 	)
-	const categories = [...new Set(services.map(s => s.category))]
 
-	const handleAddSubmit = e => {
-		e.preventDefault()
-		const newId = services.length ? Math.max(...services.map(s => s.id)) + 1 : 1
-		setServices([{ id: newId, ...formData }, ...services])
-		setIsAddModalOpen(false)
-		setFormData({
-			name: '',
-			category: 'Soch kesish',
-			duration: '30 daq',
-			price: '',
-			status: 'Faol',
-		})
-	}
-
-	const handleEditSubmit = e => {
-		e.preventDefault()
-		setServices(
-			services.map(s => (s.id === currentService.id ? currentService : s)),
+	if (selectedSalonFilter !== 'all') {
+		filteredServices = filteredServices.filter(
+			s => s.salonId === selectedSalonFilter,
 		)
-		setIsEditModalOpen(false)
 	}
 
-	const handleDelete = id => {
-		// Confirm standard window alert for fast native performance
+	const categories = [...new Set(filteredServices.map(s => s.category))]
+
+	const handleAddSubmit = async e => {
+		e.preventDefault()
+		try {
+			const res = await api.post('/services', {
+				...formData,
+				price: Number(formData.price),
+				duration: parseInt(formData.duration),
+				isActive: formData.status === 'Faol',
+			})
+			setServices([res.data, ...services])
+			setIsAddModalOpen(false)
+			setFormData({
+				salonId: salons.length > 0 ? salons[0]._id : '',
+				name: '',
+				category: 'Soch kesish',
+				duration: '30 daq',
+				price: '',
+				status: 'Faol',
+			})
+			toast.success("Xizmat muvaffaqiyatli qo'shildi")
+		} catch (error) {
+			toast.error(error.response?.data?.message || 'Xatolik yuz berdi')
+		}
+	}
+
+	const handleEditSubmit = async e => {
+		e.preventDefault()
+		try {
+			const res = await api.put(`/services/${currentService._id}`, {
+				...currentService,
+				price: Number(currentService.price),
+				duration: parseInt(currentService.duration),
+				isActive: currentService.status === 'Faol',
+			})
+			setServices(
+				services.map(s => (s._id === currentService._id ? res.data : s)),
+			)
+			setIsEditModalOpen(false)
+			toast.success('Xizmat yangilandi')
+		} catch (error) {
+			toast.error(error.response?.data?.message || 'Xatolik yuz berdi')
+		}
+	}
+
+	const handleDelete = async id => {
 		if (window.confirm("Haqiqatan ham bu xizmatni o'chirmoqchimisiz?")) {
-			setServices(services.filter(s => s.id !== id))
+			try {
+				await api.delete(`/services/${id}`)
+				setServices(services.filter(s => s._id !== id))
+				toast.success("Xizmat o'chirildi")
+			} catch (error) {
+				toast.error("O'chirishda xatolik yuz berdi")
+			}
 		}
 	}
 
@@ -179,6 +184,24 @@ export default function BusinessServices() {
 								className='h-10 w-full pl-10 pr-4 rounded-xl border border-zinc-200 text-sm focus:border-zinc-400 focus:ring-0 outline-none transition-colors'
 							/>
 						</div>
+
+						<Select
+							value={selectedSalonFilter}
+							onValueChange={setSelectedSalonFilter}
+						>
+							<SelectTrigger className='w-[180px] h-10 rounded-xl border-zinc-200'>
+								<SelectValue placeholder='Barcha filiallar' />
+							</SelectTrigger>
+							<SelectContent className='rounded-xl'>
+								<SelectItem value='all'>Barcha filiallar</SelectItem>
+								{salons.map(s => (
+									<SelectItem key={s._id} value={s._id}>
+										{s.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+
 						<Button
 							onClick={() => setIsAddModalOpen(true)}
 							className='bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl h-10 px-5 flex-shrink-0'
@@ -189,128 +212,162 @@ export default function BusinessServices() {
 				</div>
 
 				<div className='grid grid-cols-1 gap-6'>
-					{categories.map(category => {
-						const catServices = filteredServices.filter(
-							s => s.category === category,
-						)
-						if (catServices.length === 0) return null
-
-						return (
-							<Card
-								key={category}
-								className='border-none shadow-sm rounded-2xl bg-white overflow-hidden'
-							>
-								<div className='bg-zinc-50/50 px-6 py-4 border-b border-zinc-100 flex items-center justify-between'>
-									<h3 className='font-bold text-zinc-900 text-lg'>
-										{category}
-									</h3>
-									<span className='text-sm font-medium text-zinc-500 bg-white px-3 py-1 rounded-full shadow-sm border border-zinc-100'>
-										{catServices.length} ta xizmat
-									</span>
-								</div>
-
-								<CardContent className='p-0'>
-									<ul className='divide-y divide-zinc-50'>
-										{catServices.map(service => (
-											<li
-												key={service.id}
-												className='p-6 hover:bg-zinc-50/30 transition-colors flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between group'
-											>
-												<div className='flex-1'>
-													<div className='flex items-center gap-3'>
-														<h4 className='font-semibold text-zinc-900 text-base'>
-															{service.name}
-														</h4>
-														{service.status === 'Nofaol' && (
-															<span className='text-[10px] uppercase font-bold px-2 py-0.5 rounded border bg-zinc-100 text-zinc-500 border-zinc-200'>
-																Yashiringan
-															</span>
-														)}
-													</div>
-													<div className='flex items-center gap-4 mt-2'>
-														<div className='flex items-center gap-1.5 text-zinc-500 text-sm'>
-															<Clock className='w-4 h-4' /> {service.duration}
-														</div>
-														<div className='w-1 h-1 bg-zinc-300 rounded-full'></div>
-														<div className='flex items-center gap-1.5 text-zinc-500 text-sm font-medium'>
-															<Wallet className='w-4 h-4 text-emerald-600' />
-															<span className='text-zinc-900'>
-																{formatPrice(service.price)}
-															</span>
-														</div>
-													</div>
+					{isLoading ? (
+						<Card className='border-none shadow-sm rounded-2xl bg-white overflow-hidden'>
+							<div className='bg-zinc-50/50 px-6 py-4 border-b border-zinc-100 flex items-center justify-between'>
+								<Skeleton className='h-6 w-32' />
+								<Skeleton className='h-6 w-20 rounded-full' />
+							</div>
+							<CardContent className='p-0'>
+								<ul className='divide-y divide-zinc-50'>
+									{[...Array(3)].map((_, i) => (
+										<li
+											key={i}
+											className='p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between'
+										>
+											<div className='flex-1 space-y-3'>
+												<Skeleton className='h-5 w-48' />
+												<div className='flex items-center gap-4'>
+													<Skeleton className='h-4 w-16' />
+													<Skeleton className='h-4 w-24' />
 												</div>
+											</div>
+											<div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0'>
+												<Skeleton className='h-9 w-24 rounded-lg' />
+												<Skeleton className='h-9 w-9 rounded-lg' />
+											</div>
+										</li>
+									))}
+								</ul>
+							</CardContent>
+						</Card>
+					) : (
+						categories.map(category => {
+							const catServices = filteredServices.filter(
+								s => s.category === category,
+							)
+							if (catServices.length === 0) return null
 
-												<div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t border-zinc-100 sm:border-0 justify-end transition-opacity'>
-													<Button
-														onClick={() => openEditModal(service)}
-														variant='outline'
-														size='sm'
-														className='h-9 px-4 rounded-lg font-medium shadow-none'
-													>
-														<Edit2 className='w-3.5 h-3.5 mr-2' /> Tahrirlash
-													</Button>
-													<DropdownMenu>
-														<DropdownMenuTrigger asChild>
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-9 w-9 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg'
-															>
-																<MoreHorizontal className='h-4 w-4' />
-															</Button>
-														</DropdownMenuTrigger>
-														<DropdownMenuContent
-															align='end'
-															className='rounded-xl mt-1 w-40'
+							return (
+								<Card
+									key={category}
+									className='border-none shadow-sm rounded-2xl bg-white overflow-hidden'
+								>
+									<div className='bg-zinc-50/50 px-6 py-4 border-b border-zinc-100 flex items-center justify-between'>
+										<h3 className='font-bold text-zinc-900 text-lg'>
+											{category}
+										</h3>
+										<span className='text-sm font-medium text-zinc-500 bg-white px-3 py-1 rounded-full shadow-sm border border-zinc-100'>
+											{catServices.length} ta xizmat
+										</span>
+									</div>
+
+									<CardContent className='p-0'>
+										<ul className='divide-y divide-zinc-50'>
+											{catServices.map(service => (
+												<li
+													key={service._id}
+													className='p-6 hover:bg-zinc-50/30 transition-colors flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between group'
+												>
+													<div className='flex-1'>
+														<div className='flex items-center gap-3'>
+															<h4 className='font-semibold text-zinc-900 text-base'>
+																{service.name}
+															</h4>
+															{service.status === 'Nofaol' && (
+																<span className='text-[10px] uppercase font-bold px-2 py-0.5 rounded border bg-zinc-100 text-zinc-500 border-zinc-200'>
+																	Yashiringan
+																</span>
+															)}
+														</div>
+														<div className='flex items-center gap-4 mt-2'>
+															<div className='flex items-center gap-1.5 text-zinc-500 text-sm'>
+																<Clock className='w-4 h-4' /> {service.duration}{' '}
+																daq
+															</div>
+															<div className='w-1 h-1 bg-zinc-300 rounded-full'></div>
+															<div className='flex items-center gap-1.5 text-zinc-500 text-sm font-medium'>
+																<Wallet className='w-4 h-4 text-emerald-600' />
+																<span className='text-zinc-900'>
+																	{formatPrice(service.price)}
+																</span>
+															</div>
+														</div>
+													</div>
+
+													<div className='flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t border-zinc-100 sm:border-0 justify-end transition-opacity'>
+														<Button
+															onClick={() =>
+																openEditModal({
+																	...service,
+																	duration: `${service.duration} daq`,
+																	status: service.isActive ? 'Faol' : 'Nofaol',
+																})
+															}
+															variant='outline'
+															size='sm'
+															className='h-9 px-4 rounded-lg font-medium shadow-none'
 														>
-															<DropdownMenuItem
-																onClick={() => {
-																	setCurrentService({
-																		...service,
-																		status:
-																			service.status === 'Faol'
-																				? 'Nofaol'
-																				: 'Faol',
-																	})
-																	setServices(
-																		services.map(s =>
-																			s.id === service.id
-																				? {
-																						...s,
-																						status:
-																							s.status === 'Faol'
-																								? 'Nofaol'
-																								: 'Faol',
-																					}
-																				: s,
-																		),
-																	)
-																}}
-																className='cursor-pointer font-medium py-2'
+															<Edit2 className='w-3.5 h-3.5 mr-2' /> Tahrirlash
+														</Button>
+														<DropdownMenu>
+															<DropdownMenuTrigger asChild>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	className='h-9 w-9 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg'
+																>
+																	<MoreHorizontal className='h-4 w-4' />
+																</Button>
+															</DropdownMenuTrigger>
+															<DropdownMenuContent
+																align='end'
+																className='rounded-xl mt-1 w-40'
 															>
-																{service.status === 'Faol'
-																	? 'Yashirish'
-																	: 'Faollashtirish'}
-															</DropdownMenuItem>
-															<DropdownMenuItem
-																onClick={() => handleDelete(service.id)}
-																className='cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 font-medium py-2'
-															>
-																<Trash2 className='w-4 h-4 mr-2' /> O'chirish
-															</DropdownMenuItem>
-														</DropdownMenuContent>
-													</DropdownMenu>
-												</div>
-											</li>
-										))}
-									</ul>
-								</CardContent>
-							</Card>
-						)
-					})}
+																<DropdownMenuItem
+																	onClick={async () => {
+																		try {
+																			const res = await api.put(
+																				`/services/${service._id}`,
+																				{ isActive: !service.isActive },
+																			)
+																			setServices(
+																				services.map(s =>
+																					s._id === service._id ? res.data : s,
+																				),
+																			)
+																			toast.success('Status yangilandi')
+																		} catch (error) {
+																			toast.error(
+																				'Status yangilashda xatolik yuz berdi',
+																			)
+																		}
+																	}}
+																	className='cursor-pointer font-medium py-2'
+																>
+																	{service.isActive
+																		? 'Yashirish'
+																		: 'Faollashtirish'}
+																</DropdownMenuItem>
+																<DropdownMenuItem
+																	onClick={() => handleDelete(service._id)}
+																	className='cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 font-medium py-2'
+																>
+																	<Trash2 className='w-4 h-4 mr-2' /> O'chirish
+																</DropdownMenuItem>
+															</DropdownMenuContent>
+														</DropdownMenu>
+													</div>
+												</li>
+											))}
+										</ul>
+									</CardContent>
+								</Card>
+							)
+						})
+					)}
 
-					{filteredServices.length === 0 && (
+					{!isLoading && filteredServices.length === 0 && (
 						<div className='text-center py-20 bg-white rounded-2xl border-none shadow-sm'>
 							<p className='text-zinc-500 font-medium'>Xizmatlar topilmadi.</p>
 						</div>
@@ -326,22 +383,35 @@ export default function BusinessServices() {
 					</DialogHeader>
 					<form onSubmit={handleAddSubmit} className='space-y-4 py-4'>
 						<div className='space-y-2'>
-							<Label>Kategoriya</Label>
+							<Label>Filial</Label>
 							<Select
-								value={formData.category}
-								onValueChange={v => setFormData({ ...formData, category: v })}
+								required
+								value={formData.salonId}
+								onValueChange={v => setFormData({ ...formData, salonId: v })}
 							>
 								<SelectTrigger className='rounded-xl h-11 border-zinc-200'>
-									<SelectValue placeholder='Kategoriyani tanlang' />
+									<SelectValue placeholder='Filialni tanlang' />
 								</SelectTrigger>
 								<SelectContent className='rounded-xl'>
-									<SelectItem value='Soch kesish'>Soch kesish</SelectItem>
-									<SelectItem value='Soqol'>Soqol</SelectItem>
-									<SelectItem value='Qoshish'>
-										Boshqa (Qoshish, Yuz, va hk)
-									</SelectItem>
+									{salons.map(s => (
+										<SelectItem key={s._id} value={s._id}>
+											{s.name}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
+						</div>
+						<div className='space-y-2'>
+							<Label>Kategoriya</Label>
+							<Input
+								required
+								value={formData.category}
+								onChange={e =>
+									setFormData({ ...formData, category: e.target.value })
+								}
+								placeholder='Turkum nomi...'
+								className='rounded-xl h-11 border-zinc-200'
+							/>
 						</div>
 						<div className='space-y-2'>
 							<Label>Xizmat Nomi</Label>
@@ -433,24 +503,40 @@ export default function BusinessServices() {
 					{currentService && (
 						<form onSubmit={handleEditSubmit} className='space-y-4 py-4'>
 							<div className='space-y-2'>
-								<Label>Kategoriya</Label>
+								<Label>Filial</Label>
 								<Select
-									value={currentService.category}
+									required
+									value={currentService.salonId}
 									onValueChange={v =>
-										setCurrentService({ ...currentService, category: v })
+										setCurrentService({ ...currentService, salonId: v })
 									}
 								>
 									<SelectTrigger className='rounded-xl h-11 border-zinc-200'>
-										<SelectValue placeholder='Kategoriyani tanlang' />
+										<SelectValue placeholder='Filialni tanlang' />
 									</SelectTrigger>
 									<SelectContent className='rounded-xl'>
-										<SelectItem value='Soch kesish'>Soch kesish</SelectItem>
-										<SelectItem value='Soqol'>Soqol</SelectItem>
-										<SelectItem value='Qoshish'>
-											Boshqa (Qoshish, Yuz, va hk)
-										</SelectItem>
+										{salons.map(s => (
+											<SelectItem key={s._id} value={s._id}>
+												{s.name}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
+							</div>
+							<div className='space-y-2'>
+								<Label>Kategoriya</Label>
+								<Input
+									required
+									value={currentService.category}
+									onChange={e =>
+										setCurrentService({
+											...currentService,
+											category: e.target.value,
+										})
+									}
+									placeholder='Turkum nomi...'
+									className='rounded-xl h-11 border-zinc-200'
+								/>
 							</div>
 							<div className='space-y-2'>
 								<Label>Xizmat Nomi</Label>

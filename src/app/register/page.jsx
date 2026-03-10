@@ -3,15 +3,27 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { motion } from 'framer-motion'
+import { Textarea } from '@/components/ui/textarea'
+import { useAuth } from '@/context/AuthContext'
+import api from '@/lib/api'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
 	ArrowLeft,
 	Building,
 	Chrome,
 	Eye,
 	EyeOff,
+	Loader2,
 	Scissors,
+	Sparkles,
 	User,
 } from 'lucide-react'
 import Image from 'next/image'
@@ -22,6 +34,7 @@ import { PatternFormat } from 'react-number-format'
 
 export default function RegisterPage() {
 	const router = useRouter()
+	const { refreshUser } = useAuth()
 	const [activeTab, setActiveTab] = useState('client')
 	const [showPassword, setShowPassword] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
@@ -32,15 +45,17 @@ export default function RegisterPage() {
 		name: '',
 		phone: '',
 		password: '',
+		about: '',
 	})
 	const [businessData, setBusinessData] = useState({
 		type: '',
 		name: '',
 		phone: '',
 		password: '',
+		about: '',
 	})
 
-	const handleRegister = e => {
+	const handleRegister = async e => {
 		e.preventDefault()
 		setError('')
 
@@ -66,7 +81,6 @@ export default function RegisterPage() {
 			return
 		}
 		if (cleanPhone.length < 9) {
-			// Assuming 9 digits after +998
 			setError("Telefon raqam to'liq emas")
 			return
 		}
@@ -77,428 +91,497 @@ export default function RegisterPage() {
 
 		setIsLoading(true)
 
-		// Simulate API call
-		setTimeout(() => {
-			const sessionData = {
-				id:
-					(activeTab === 'client' ? 'usr_' : 'biz_') +
-					Math.random().toString(36).substr(2, 9),
+		try {
+			const payload = {
 				name: currentData.name,
-				phone: '+' + cleanPhone,
-				role: activeTab,
-				token: 'fake-jwt-token-xyz',
+				phone: '+998' + cleanPhone,
+				password: currentData.password,
+				role: activeTab === 'business' ? 'business' : 'client',
+				businessType: activeTab === 'business' ? currentData.type : 'none',
+				about: currentData.about || '',
 			}
 
-			localStorage.setItem('aura_session', JSON.stringify(sessionData))
-			window.dispatchEvent(new Event('storage'))
-			router.push('/')
-			router.refresh()
-		}, 1000)
+			const { data } = await api.post('/auth/register', payload)
+
+			await refreshUser()
+			router.push(`/${data.role}/dashboard`)
+		} catch (err) {
+			setError(err.response?.data?.message || 'Xatolik yuz berdi')
+			setIsLoading(false)
+		}
 	}
 
 	return (
 		<div className='min-h-screen bg-zinc-50 flex flex-col md:flex-row font-sans selection:bg-zinc-200 selection:text-zinc-900 overflow-hidden'>
 			{/* Left Side: Brand Imagery (Sticky) */}
 			<div className='hidden md:flex w-1/2 p-6 h-screen sticky top-0'>
-				<motion.div
-					initial={{ opacity: 0, scale: 0.95 }}
-					animate={{ opacity: 1, scale: 1 }}
-					transition={{ duration: 0.8, ease: 'easeOut' }}
-					className='relative w-full h-full rounded-[2.5rem] overflow-hidden flex flex-col justify-end p-12'
-				>
+				<div className='relative w-full h-full rounded-3xl overflow-hidden bg-zinc-900 group'>
+					{/* Animated Gradient Background */}
+					<motion.div
+						animate={{
+							scale: [1, 1.1, 1],
+							rotate: [0, 5, 0],
+						}}
+						transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+						className='absolute inset-0 opacity-40'
+						style={{
+							background:
+								'radial-gradient(circle at 20% 30%, #52525b 0%, transparent 50%), radial-gradient(circle at 80% 70%, #27272a 0%, transparent 50%)',
+						}}
+					/>
+
+					{/* Image Overlay */}
 					<Image
-						src='/images/hero.png'
-						alt='Aura Booking Reception'
+						src='https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80'
+						alt='Modern Salon'
 						fill
-						className='object-cover'
+						className='object-cover mix-blend-overlay opacity-60 grayscale group-hover:scale-105 transition-transform duration-1000'
 						priority
 					/>
-					<div className='absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-900/40 to-transparent'></div>
 
-					<div className='relative z-10 text-white max-w-lg mb-8'>
-						<motion.div
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ delay: 0.3, duration: 0.6 }}
-							className='inline-flex items-center gap-3 mb-8'
-						>
-							<div className='p-3 bg-white/10 backdrop-blur-md rounded-2xl'>
-								<Scissors className='h-8 w-8 text-white' strokeWidth={1.5} />
+					{/* Glassmorphism Branding */}
+					<div className='absolute inset-0 p-12 flex flex-col justify-between'>
+						<Link href='/' className='flex items-center gap-3'>
+							<div className='p-3 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 hover:bg-white/20 transition-colors'>
+								<Scissors className='h-6 w-6 text-white' />
 							</div>
-							<span className='font-semibold text-3xl tracking-tight'>
-								Aura Booking
+							<span className='text-2xl font-bold tracking-tight text-white'>
+								Aura
 							</span>
-						</motion.div>
+						</Link>
 
-						<motion.h2
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ delay: 0.4, duration: 0.6 }}
-							className='text-4xl font-bold mb-4 leading-tight'
-						>
-							Yangi go'zallik davri boshlandi
-						</motion.h2>
+						<div className='space-y-6 max-w-md'>
+							<motion.h2
+								initial={{ y: 20, opacity: 0 }}
+								animate={{ y: 0, opacity: 1 }}
+								transition={{ delay: 0.2 }}
+								className='text-5xl font-bold text-white leading-[1.1]'
+							>
+								Go'zallik va qulaylik bir joyda.
+							</motion.h2>
+							<motion.p
+								initial={{ y: 20, opacity: 0 }}
+								animate={{ y: 0, opacity: 1 }}
+								transition={{ delay: 0.3 }}
+								className='text-zinc-300 text-lg font-light leading-relaxed'
+							>
+								O'zingizga yoqqan salonni toping, xizmatlarni tanlang va bir
+								necha soniya ichida band qiling.
+							</motion.p>
 
-						<motion.p
-							initial={{ y: 20, opacity: 0 }}
-							animate={{ y: 0, opacity: 1 }}
-							transition={{ delay: 0.5, duration: 0.6 }}
-							className='text-zinc-300 text-lg leading-relaxed'
-						>
-							Mijozlar uchun qulaylik, salonlar va ustalar uchun daromadli
-							ekotizim. O'z o'rningizni hoziroq band qiling.
-						</motion.p>
-					</div>
-
-					{/* decorative glass card */}
-					<motion.div
-						initial={{ y: 30, opacity: 0 }}
-						animate={{ y: 0, opacity: 1 }}
-						transition={{ delay: 0.6, duration: 0.6 }}
-						className='relative z-10 bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl max-w-sm'
-					>
-						<div className='flex -space-x-4 mb-4'>
-							{[...Array(4)].map((_, i) => (
-								<div
-									key={i}
-									className='w-12 h-12 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center text-white text-xs font-bold'
-								>
-									<User className='w-5 h-5 text-zinc-400' />
-								</div>
-							))}
-							<div className='w-12 h-12 rounded-full border-2 border-zinc-900 bg-white flex items-center justify-center text-zinc-900 text-xs font-bold'>
-								+10k
+							{/* Stats Grid */}
+							<div className='grid grid-cols-2 gap-4 pt-8'>
+								{[
+									{ label: 'Faol salonlar', value: '500+' },
+									{ label: 'Mamnun mijozlar', value: '10k+' },
+								].map((stat, idx) => (
+									<div
+										key={idx}
+										className='p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors cursor-default'
+									>
+										<div className='text-2xl font-bold text-white mb-1'>
+											{stat.value}
+										</div>
+										<div className='text-xs text-zinc-400 uppercase tracking-widest font-medium'>
+											{stat.label}
+										</div>
+									</div>
+								))}
 							</div>
 						</div>
-						<p className='text-sm text-zinc-300 font-medium'>
-							Barchasi biz bilan birga
-						</p>
-					</motion.div>
-				</motion.div>
+					</div>
+				</div>
 			</div>
 
-			{/* Right Side: Form (Scrollable) */}
-			<div className='w-full md:w-1/2 flex items-center justify-center p-6 sm:p-12 lg:p-24 overflow-y-auto min-h-screen'>
-				<motion.div
-					initial={{ opacity: 0, x: 20 }}
-					animate={{ opacity: 1, x: 0 }}
-					transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-					className='w-full max-w-md w-full'
-				>
-					{/* Mobile Logo & Back button */}
-					<div className='flex md:hidden items-center justify-between mb-12'>
-						<Link href='/' className='inline-flex items-center gap-2 group'>
-							<div className='p-2 bg-zinc-900 rounded-xl'>
-								<Scissors className='h-5 w-5 text-white' strokeWidth={1.5} />
+			{/* Right Side: Registration Form (Scrollable) */}
+			<div className='flex-1 flex flex-col min-h-screen py-8 md:py-12 px-6 sm:px-12 md:px-20 overflow-y-auto bg-zinc-50'>
+				<div className='max-w-[440px] w-full mx-auto space-y-10'>
+					{/* Mobile Header */}
+					<div className='md:hidden flex items-center justify-between mb-8'>
+						<Link href='/' className='flex items-center gap-2'>
+							<div className='p-2 bg-zinc-900 rounded-lg'>
+								<Scissors className='h-4 w-4 text-white' />
 							</div>
-							<span className='font-semibold text-xl text-zinc-900 tracking-tight'>
-								Aura Booking
-							</span>
+							<span className='font-bold text-zinc-900'>Aura</span>
+						</Link>
+						<Link
+							href='/login'
+							className='text-sm font-medium text-zinc-600 hover:text-zinc-900'
+						>
+							Kirish
 						</Link>
 					</div>
 
-					<div className='hidden md:block mb-10'>
+					<div className='space-y-3 px-1'>
 						<Link
 							href='/'
-							className='inline-flex items-center text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors'
+							className='inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors mb-4 group'
 						>
-							<ArrowLeft className='w-4 h-4 mr-2' /> Bosh sahifaga qaytish
+							<ArrowLeft className='h-4 w-4 transition-transform group-hover:-translate-x-1' />
+							Bosh sahifaga qaytish
 						</Link>
-					</div>
-
-					<div className='mb-10'>
-						<h1 className='text-3xl font-bold text-zinc-900 tracking-tight mb-3'>
-							Ro'yxatdan o'tish
+						<h1 className='text-3xl font-bold tracking-tight text-zinc-900'>
+							Hisob yaratish
 						</h1>
 						<p className='text-zinc-500'>
-							O'zingizga kerakli profil turini tanlang va ma'lumotlarni
-							kiriting.
+							O'zingizga mos keladigan ro'yxatdan o'tish turini tanlang
 						</p>
 					</div>
 
-					{error && (
-						<motion.div
-							initial={{ opacity: 0, y: -10 }}
-							animate={{ opacity: 1, y: 0 }}
-							className='mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100'
-						>
-							{error}
-						</motion.div>
-					)}
-
+					{/* Registration Tabs */}
 					<Tabs
 						value={activeTab}
 						onValueChange={setActiveTab}
 						className='w-full'
 					>
-						<TabsList className='grid w-full grid-cols-2 h-14 mb-8 bg-zinc-100 rounded-2xl p-1.5'>
+						<TabsList className='grid w-full grid-cols-2 p-1.5 bg-zinc-100/80 backdrop-blur-sm rounded-2xl h-14'>
 							<TabsTrigger
 								value='client'
-								className='rounded-xl font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all focus-visible:ring-0'
+								className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-zinc-900 transition-all duration-300 gap-2 font-medium text-zinc-500'
 							>
-								<User className='w-4 h-4 mr-2' /> Mijoz
+								<User className='h-4 w-4' />
+								Mijoz
 							</TabsTrigger>
 							<TabsTrigger
 								value='business'
-								className='rounded-xl font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all focus-visible:ring-0'
+								className='rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-zinc-900 transition-all duration-300 gap-2 font-medium text-zinc-500'
 							>
-								<Building className='w-4 h-4 mr-2' /> Biznes
+								<Building className='h-4 w-4' />
+								Biznes
 							</TabsTrigger>
 						</TabsList>
 
-						<form onSubmit={handleRegister}>
-							{/* Client Registration */}
-							<TabsContent
-								value='client'
-								className='space-y-6 focus-visible:ring-0 mt-0'
+						<AnimatePresence mode='wait'>
+							<motion.div
+								key={activeTab}
+								initial={{ opacity: 0, x: 20 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -20 }}
+								transition={{ duration: 0.3, ease: 'easeOut' }}
 							>
-								<div className='flex flex-col gap-5'>
-									<div className='space-y-2'>
-										<Label
-											htmlFor='c_name'
-											className='text-zinc-700 font-medium'
-										>
-											To'liq ismingiz
-										</Label>
-										<Input
-											id='c_name'
-											placeholder='Ism va familiya'
-											value={clientData.name}
-											onChange={e =>
-												setClientData({ ...clientData, name: e.target.value })
-											}
-											className='h-12 rounded-xl bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900'
-										/>
-									</div>
+								<TabsContent value='client' className='mt-8'>
+									<form onSubmit={handleRegister} className='space-y-5'>
+										<div className='space-y-4'>
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Ism-sharifingiz
+												</Label>
+												<Input
+													placeholder='Masalan: Sadriddin Akhmadullayev'
+													className='h-12 px-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm'
+													value={clientData.name}
+													onChange={e =>
+														setClientData({
+															...clientData,
+															name: e.target.value,
+														})
+													}
+												/>
+											</div>
 
-									<div className='space-y-2'>
-										<Label
-											htmlFor='c_phone'
-											className='text-zinc-700 font-medium'
-										>
-											Telefon raqamingiz
-										</Label>
-										<div className='relative'>
-											<span className='absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium'>
-												+998
-											</span>
-											<PatternFormat
-												id='c_phone'
-												format='(##) ### ## ##'
-												allowEmptyFormatting
-												mask='_'
-												value={clientData.phone}
-												onValueChange={values =>
-													setClientData({ ...clientData, phone: values.value })
-												}
-												className='flex h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-16 pr-4 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-50'
-											/>
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Telefon raqamingiz
+												</Label>
+												<div className='relative'>
+													<span className='absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-medium border-r border-zinc-200 pr-3 pointer-events-none'>
+														+998
+													</span>
+													<PatternFormat
+														format='## ### ####'
+														mask='_'
+														customInput={Input}
+														placeholder='94 000 1122'
+														className='h-12 pl-[74px] pr-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm font-medium'
+														value={clientData.phone}
+														onValueChange={values =>
+															setClientData({
+																...clientData,
+																phone: values.value,
+															})
+														}
+													/>
+												</div>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Parol o'rnating
+												</Label>
+												<div className='relative group'>
+													<Input
+														type={showPassword ? 'text' : 'password'}
+														placeholder='Kamida 6 belgi'
+														className='h-12 px-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm pr-12'
+														value={clientData.password}
+														onChange={e =>
+															setClientData({
+																...clientData,
+																password: e.target.value,
+															})
+														}
+													/>
+													<Button
+														type='button'
+														variant='ghost'
+														size='icon'
+														className='absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-400 hover:text-zinc-600'
+														onClick={() => setShowPassword(!showPassword)}
+													>
+														{showPassword ? (
+															<EyeOff className='h-4 w-4' />
+														) : (
+															<Eye className='h-4 w-4' />
+														)}
+													</Button>
+												</div>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													O'zingiz haqingizda (ixtiyoriy)
+												</Label>
+												<Textarea
+													placeholder='Ozingiz haqingizda malumot bering...'
+													className='min-h-[100px] px-4 py-3 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm resize-none'
+													value={clientData.about}
+													onChange={e =>
+														setClientData({
+															...clientData,
+															about: e.target.value,
+														})
+													}
+												/>
+											</div>
 										</div>
-									</div>
 
-									<div className='space-y-2'>
-										<Label
-											htmlFor='c_pass'
-											className='text-zinc-700 font-medium'
-										>
-											Parol o'ylab toping
-										</Label>
-										<div className='relative'>
-											<input
-												id='c_pass'
-												type={showPassword ? 'text' : 'password'}
-												value={clientData.password}
-												onChange={e =>
-													setClientData({
-														...clientData,
-														password: e.target.value,
-													})
-												}
-												placeholder='••••••••'
-												className='flex h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 pr-12'
-											/>
-											<button
-												type='button'
-												onClick={() => setShowPassword(!showPassword)}
-												className='absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors'
+										{error && (
+											<motion.div
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												className='p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex items-center gap-2'
 											>
-												{showPassword ? (
-													<EyeOff className='w-5 h-5' />
-												) : (
-													<Eye className='w-5 h-5' />
-												)}
-											</button>
+												<div className='h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse' />
+												{error}
+											</motion.div>
+										)}
+
+										<Button
+											type='submit'
+											disabled={isLoading}
+											className='w-full h-12 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300'
+										>
+											{isLoading ? (
+												<Loader2 className='h-5 w-5 animate-spin' />
+											) : (
+												"Ro'yxatdan o'tish"
+											)}
+										</Button>
+									</form>
+								</TabsContent>
+
+								<TabsContent value='business' className='mt-8'>
+									<form onSubmit={handleRegister} className='space-y-5'>
+										<div className='space-y-4'>
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Biznes turi
+												</Label>
+												<Select
+													value={businessData.type}
+													onValueChange={value =>
+														setBusinessData({ ...businessData, type: value })
+													}
+												>
+													<SelectTrigger className='h-12 rounded-xl border-zinc-200 bg-white shadow-sm focus:ring-zinc-900 focus:border-zinc-900 w-full'>
+														<SelectValue placeholder='Biznes turini tanlang' />
+													</SelectTrigger>
+													<SelectContent className='rounded-xl border-zinc-200 shadow-xl'>
+														<SelectItem value='beauty_salon'>
+															Ayollar saloni
+														</SelectItem>
+														<SelectItem value='barbershop'>
+															Barbershop
+														</SelectItem>
+														<SelectItem value='spa'>
+															{' '}
+															Spa va Dam olish
+														</SelectItem>
+														<SelectItem value='children_massage'>
+															Bolalar massaji
+														</SelectItem>
+														<SelectItem value='adult_massage'>
+															Kattalar massaji
+														</SelectItem>
+														<SelectItem value='cosmetology_manicure'>
+															Kosmetologiya va monikur
+														</SelectItem>
+														<SelectItem value='sport_center'>
+															Sport markazlari
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Biznes nomi (Salon nomi)
+												</Label>
+												<Input
+													placeholder='Masalan: Aura Elite Studio'
+													className='h-12 px-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm'
+													value={businessData.name}
+													onChange={e =>
+														setBusinessData({
+															...businessData,
+															name: e.target.value,
+														})
+													}
+												/>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Siz bilan bog'lanish uchun raqam
+												</Label>
+												<div className='relative'>
+													<span className='absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-medium border-r border-zinc-200 pr-3 pointer-events-none'>
+														+998
+													</span>
+													<PatternFormat
+														format='## ### ####'
+														mask='_'
+														customInput={Input}
+														placeholder='94 000 1122'
+														className='h-12 pl-[74px] pr-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm font-medium'
+														value={businessData.phone}
+														onValueChange={values =>
+															setBusinessData({
+																...businessData,
+																phone: values.value,
+															})
+														}
+													/>
+												</div>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Parol (Boshqaruv paneli uchun)
+												</Label>
+												<div className='relative group'>
+													<Input
+														type={showPassword ? 'text' : 'password'}
+														placeholder='Kamida 6 belgi'
+														className='h-12 px-4 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm pr-12'
+														value={businessData.password}
+														onChange={e =>
+															setBusinessData({
+																...businessData,
+																password: e.target.value,
+															})
+														}
+													/>
+													<Button
+														type='button'
+														variant='ghost'
+														size='icon'
+														className='absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-400 hover:text-zinc-600'
+														onClick={() => setShowPassword(!showPassword)}
+													>
+														{showPassword ? (
+															<EyeOff className='h-4 w-4' />
+														) : (
+															<Eye className='h-4 w-4' />
+														)}
+													</Button>
+												</div>
+											</div>
+
+											<div className='space-y-2'>
+												<Label className='text-sm font-medium text-zinc-700 ml-1'>
+													Biznes haqida (ixtiyoriy)
+												</Label>
+												<Textarea
+													placeholder='Biznesingiz haqida qisqacha maʼlumot bering...'
+													className='min-h-[100px] px-4 py-3 rounded-xl border-zinc-200 focus:border-zinc-900 focus:ring-zinc-900 transition-all bg-white shadow-sm resize-none'
+													value={businessData.about}
+													onChange={e =>
+														setBusinessData({
+															...businessData,
+															about: e.target.value,
+														})
+													}
+												/>
+											</div>
 										</div>
-									</div>
-								</div>
-							</TabsContent>
 
-							{/* Business Registration */}
-							<TabsContent
-								value='business'
-								className='space-y-6 focus-visible:ring-0 mt-0'
-							>
-								<div className='flex flex-col gap-5'>
-									<div className='space-y-2'>
-										<Label
-											htmlFor='b_type'
-											className='text-zinc-700 font-medium'
-										>
-											Biznes turi
-										</Label>
-										<select
-											id='b_type'
-											value={businessData.type}
-											onChange={e =>
-												setBusinessData({
-													...businessData,
-													type: e.target.value,
-												})
-											}
-											className='w-full h-12 rounded-xl bg-zinc-50 border border-zinc-200 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900 text-zinc-700'
-										>
-											<option value=''>Tanlang...</option>
-											<option value='salon'>
-												Yirik Go'zallik Saloni (Bir nechta usta)
-											</option>
-											<option value='master'>
-												Yakka tartibdagi usta (Sartarosh, vizajist)
-											</option>
-											<option value='spa'>Spa & Massaj Markazi</option>
-										</select>
-									</div>
-
-									<div className='space-y-2'>
-										<Label
-											htmlFor='b_name'
-											className='text-zinc-700 font-medium'
-										>
-											Salon yoki Usta nomi
-										</Label>
-										<Input
-											id='b_name'
-											placeholder='Masalan: Aura Premium yoki Alisher (usta)'
-											value={businessData.name}
-											onChange={e =>
-												setBusinessData({
-													...businessData,
-													name: e.target.value,
-												})
-											}
-											className='h-12 rounded-xl bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-900'
-										/>
-									</div>
-
-									<div className='space-y-2'>
-										<Label
-											htmlFor='b_phone'
-											className='text-zinc-700 font-medium'
-										>
-											Aloqa biznes raqami
-										</Label>
-										<div className='relative'>
-											<span className='absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium'>
-												+998
-											</span>
-											<PatternFormat
-												id='b_phone'
-												format='(##) ### ## ##'
-												allowEmptyFormatting
-												mask='_'
-												value={businessData.phone}
-												onValueChange={values =>
-													setBusinessData({
-														...businessData,
-														phone: values.value,
-													})
-												}
-												className='flex h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-16 pr-4 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-50'
-											/>
-										</div>
-									</div>
-
-									<div className='space-y-2'>
-										<Label
-											htmlFor='b_pass'
-											className='text-zinc-700 font-medium'
-										>
-											Parol o'ylab toping
-										</Label>
-										<div className='relative'>
-											<input
-												id='b_pass'
-												type={showPassword ? 'text' : 'password'}
-												value={businessData.password}
-												onChange={e =>
-													setBusinessData({
-														...businessData,
-														password: e.target.value,
-													})
-												}
-												placeholder='••••••••'
-												className='flex h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-900 pr-12'
-											/>
-											<button
-												type='button'
-												onClick={() => setShowPassword(!showPassword)}
-												className='absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 transition-colors'
+										{error && (
+											<motion.div
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												className='p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm font-medium flex items-center gap-2'
 											>
-												{showPassword ? (
-													<EyeOff className='w-5 h-5' />
-												) : (
-													<Eye className='w-5 h-5' />
-												)}
-											</button>
-										</div>
-									</div>
-								</div>
-							</TabsContent>
+												<div className='h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse' />
+												{error}
+											</motion.div>
+										)}
 
-							<Button
-								type='submit'
-								disabled={isLoading}
-								className='w-full h-12 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-base mt-8 shadow-md hover:shadow-lg transition-all disabled:opacity-70'
-							>
-								{isLoading
-									? 'Iltimos, kuting...'
-									: activeTab === 'client'
-										? 'Profil yaratish'
-										: 'Biznes profil yaratish'}
-							</Button>
-						</form>
+										<Button
+											type='submit'
+											disabled={isLoading}
+											className='w-full h-12 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300'
+										>
+											{isLoading ? (
+												<Loader2 className='h-5 w-5 animate-spin' />
+											) : (
+												'Biznes hisob yaratish'
+											)}
+										</Button>
+
+										<div className='flex items-center gap-3 py-2'>
+											<div className='h-[1px] flex-1 bg-zinc-200' />
+											<span className='text-xs font-medium text-zinc-400 uppercase tracking-widest'>
+												yoki
+											</span>
+											<div className='h-[1px] flex-1 bg-zinc-200' />
+										</div>
+
+										<Button
+											variant='outline'
+											className='w-full h-12 rounded-xl border-zinc-200 hover:bg-zinc-50 transition-colors font-medium flex items-center justify-center gap-3'
+										>
+											<Chrome className='h-5 w-5 text-zinc-900' />
+											Google bilan davom etish
+										</Button>
+									</form>
+								</TabsContent>
+							</motion.div>
+						</AnimatePresence>
 					</Tabs>
 
-					<div className='relative my-10'>
-						<div className='absolute inset-0 flex items-center'>
-							<div className='w-full border-t border-zinc-200'></div>
-						</div>
-						<div className='relative flex justify-center text-sm'>
-							<span className='px-4 bg-zinc-50 text-zinc-500 font-medium'>
-								Yoki
-							</span>
+					{/* Footer Links */}
+					<div className='text-center space-y-4'>
+						<p className='text-sm text-zinc-500'>
+							Hisobingiz bormi?{' '}
+							<Link
+								href='/login'
+								className='text-zinc-900 font-semibold hover:underline decoration-zinc-900 underline-offset-4'
+							>
+								Kirish
+							</Link>
+						</p>
+
+						<div className='pt-8 border-t border-zinc-100'>
+							<div className='flex items-center justify-center gap-2'>
+								<Sparkles className='h-4 w-4 text-zinc-400' />
+								<span className='text-[11px] font-medium text-zinc-400 uppercase tracking-[0.2em]'>
+									Premium Booking Experience
+								</span>
+							</div>
 						</div>
 					</div>
-
-					<div className='space-y-4'>
-						<Button
-							variant='outline'
-							className='w-full h-12 rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 font-medium text-zinc-700 transition-colors'
-						>
-							<Chrome className='w-5 h-5 mr-3 text-zinc-700' /> Google orqali
-							davom etish
-						</Button>
-					</div>
-
-					<p className='text-center text-sm text-zinc-500 mt-10 font-medium'>
-						Allaqachon profilingiz bormi?{' '}
-						<Link
-							href='/login'
-							className='text-zinc-900 font-semibold hover:underline decoration-zinc-900/50 underline-offset-4'
-						>
-							Tizimga kirish
-						</Link>
-					</p>
-				</motion.div>
+				</div>
 			</div>
 		</div>
 	)

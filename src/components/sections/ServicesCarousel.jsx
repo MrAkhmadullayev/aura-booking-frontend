@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 const categories = [
 	{
@@ -46,27 +46,10 @@ const categories = [
 ]
 
 export default function ServicesCarousel() {
-	const carouselRef = useRef(null)
-	const [isDragging, setIsDragging] = useState(false)
-	const [startX, setStartX] = useState(0)
-	const [scrollLeft, setScrollLeft] = useState(0)
+	const [isHovered, setIsHovered] = useState(false)
 
-	// Custom drag to scroll functionality
-	const handleMouseDown = e => {
-		setIsDragging(true)
-		setStartX(e.pageX - carouselRef.current.offsetLeft)
-		setScrollLeft(carouselRef.current.scrollLeft)
-	}
-
-	const handleMouseLeave = () => setIsDragging(false)
-	const handleMouseUp = () => setIsDragging(false)
-	const handleMouseMove = e => {
-		if (!isDragging) return
-		e.preventDefault()
-		const x = e.pageX - carouselRef.current.offsetLeft
-		const walk = (x - startX) * 2 // Scroll speed multiplier
-		carouselRef.current.scrollLeft = scrollLeft - walk
-	}
+	// We duplicate the categories array to create a seamless infinite loop effect
+	const scrollingCategories = [...categories, ...categories, ...categories]
 
 	return (
 		<section className='py-24 bg-white overflow-hidden'>
@@ -112,20 +95,24 @@ export default function ServicesCarousel() {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: '-50px' }}
 					transition={{ duration: 0.8 }}
-					className='-mx-6 px-6 lg:-mx-8 lg:px-8'
+					className='-mx-6 lg:-mx-8 overflow-hidden relative'
+					onMouseEnter={() => setIsHovered(true)}
+					onMouseLeave={() => setIsHovered(false)}
 				>
+					{/* Gradient overlays to smooth the edges */}
+					<div className='absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent z-30 pointer-events-none hidden md:block' />
+					<div className='absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent z-30 pointer-events-none hidden md:block' />
+
 					<div
-						ref={carouselRef}
-						onMouseDown={handleMouseDown}
-						onMouseLeave={handleMouseLeave}
-						onMouseUp={handleMouseUp}
-						onMouseMove={handleMouseMove}
-						className='flex gap-6 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-8 pt-4 cursor-grab active:cursor-grabbing hover-scrollbar-visible'
-						style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
+						className={`flex gap-6 py-8 w-max ${
+							isHovered
+								? 'animate-infinite-scroll-paused'
+								: 'animate-infinite-scroll'
+						}`}
 					>
-						{categories.map((category, idx) => (
+						{scrollingCategories.map((category, idx) => (
 							<div
-								key={category.id}
+								key={`${category.id}-${idx}`}
 								className='relative flex-shrink-0 w-[280px] sm:w-[320px] aspect-[3/4] rounded-3xl overflow-hidden snap-start group'
 							>
 								{/* Placeholder for missing images to default to black bg if route fails */}
@@ -163,16 +150,24 @@ export default function ServicesCarousel() {
 				</motion.div>
 			</div>
 
-			{/* Custom style to hide scrollbar but allow styling */}
+			{/* Custom style for infinite scroll animation */}
 			<style
 				dangerouslySetInnerHTML={{
 					__html: `
-				.hide-scrollbar::-webkit-scrollbar {
-					display: none;
+				@keyframes infinite-scroll {
+					0% {
+						transform: translateX(0);
+					}
+					100% {
+						transform: translateX(calc(-33.333% - 8px)); /* Approximates one set of cards (1/3 of the duplicated total array + gap offset) */
+					}
 				}
-				.hide-scrollbar {
-					-ms-overflow-style: none;
-					scrollbar-width: none;
+				.animate-infinite-scroll {
+					animation: infinite-scroll 45s linear infinite;
+				}
+				.animate-infinite-scroll-paused {
+					animation: infinite-scroll 45s linear infinite;
+					animation-play-state: paused;
 				}
 			`,
 				}}
